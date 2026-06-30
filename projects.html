@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>活着吗 / 点亮生命 - 项目入口</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #f6f3ec;
+        color: #191814;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC",
+          "Microsoft YaHei", sans-serif;
+      }
+
+      main {
+        margin: 0 auto;
+        max-width: 1120px;
+        min-height: 100vh;
+        padding: 54px 22px;
+      }
+
+      h1 {
+        font-size: clamp(38px, 7vw, 86px);
+        letter-spacing: 0;
+        line-height: 0.95;
+        margin: 0 0 18px;
+      }
+
+      .lead {
+        color: #676056;
+        font-size: 18px;
+        line-height: 1.7;
+        margin: 0 0 34px;
+        max-width: 760px;
+      }
+
+      .grid {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .project {
+        background: #fffaf0;
+        border: 1px solid rgba(25, 24, 20, 0.12);
+        border-radius: 18px;
+        color: inherit;
+        min-height: 420px;
+        overflow: hidden;
+        padding: 26px;
+        position: relative;
+        text-decoration: none;
+      }
+
+      .project.dark {
+        background:
+          radial-gradient(circle at 76% 14%, rgba(125, 211, 252, 0.38), transparent 28%),
+          linear-gradient(150deg, #08111f, #151a2c 52%, #05070d);
+        color: #f8fafc;
+      }
+
+      .tag {
+        border: 1px solid currentColor;
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 13px;
+        margin-bottom: 22px;
+        opacity: 0.72;
+        padding: 7px 10px;
+      }
+
+      .project h2 {
+        font-size: clamp(34px, 5vw, 58px);
+        line-height: 0.98;
+        margin: 0 0 14px;
+      }
+
+      .project p {
+        color: inherit;
+        font-size: 16px;
+        line-height: 1.65;
+        margin: 0;
+        max-width: 430px;
+        opacity: 0.72;
+      }
+
+      .features {
+        bottom: 24px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        left: 26px;
+        position: absolute;
+        right: 26px;
+      }
+
+      .features span {
+        background: rgba(25, 24, 20, 0.06);
+        border-radius: 999px;
+        font-size: 13px;
+        padding: 8px 10px;
+      }
+
+      .dark .features span {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .legal {
+        border-top: 1px solid rgba(25, 24, 20, 0.12);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-top: 28px;
+        padding-top: 20px;
+      }
+
+      .legal a {
+        color: #3f6f2e;
+        font-size: 14px;
+        text-decoration: none;
+      }
+
+      @media (max-width: 760px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>两个方向，分开长大。</h1>
+      <p class="lead">
+        “活着吗”保留简单、随性、轻社交的日常确认；“点亮生命”作为独立项目，走更有仪式感的地球生命叙事。
+      </p>
+
+      <section class="grid">
+        <a class="project" href="huozhema.html">
+          <span class="tag">Project A</span>
+          <h2>活着吗</h2>
+          <p>每天确认自己还活着。写一句给自己的话，记一点心情，做完今天最多三件事，顺手戳戳好友。</p>
+          <div class="features">
+            <span>每日活着打卡</span>
+            <span>送给自己一句话</span>
+            <span>三件事</span>
+            <span>戳一戳好友</span>
+          </div>
+        </a>
+
+        <a class="project dark" href="light-life.html">
+          <span class="tag">Project B</span>
+          <h2>点亮生命</h2>
+          <p>在地球上生活，点亮生命的每一天。用天气记录心情，留下年度重大事件，生成年度总结。</p>
+          <div class="features">
+            <span>点亮今天</span>
+            <span>天气心情</span>
+            <span>年度事件</span>
+            <span>年度总结</span>
+          </div>
+        </a>
+      </section>
+
+      <nav class="legal" aria-label="法律信息">
+        <a href="index.html">产品官网</a>
+        <a href="privacy.html">隐私政策</a>
+        <a href="terms.html">用户协议</a>
+      </nav>
+    </main>
+  </body>
+</html>

@@ -3,173 +3,635 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>活着吗 / 点亮生命 - 项目入口</title>
+    <meta
+      name="description"
+      content="活着吗是一款轻量每日确认与生活记录 App，记录今天心情、随笔、照片、三件事，也能和好友轻轻确认彼此还在。"
+    />
+    <title>活着吗 - 每天确认一下还活着</title>
     <style>
       * {
         box-sizing: border-box;
       }
 
+      :root {
+        color-scheme: dark;
+        --bg: #10120f;
+        --panel: #191b17;
+        --panel-soft: #20251d;
+        --line: rgba(155, 226, 124, 0.2);
+        --green: #9be27c;
+        --green-strong: #6fe05f;
+        --red: #ff3045;
+        --text: #f1efe7;
+        --muted: #aaa69b;
+        --soft: #d6d2c7;
+      }
+
       body {
         margin: 0;
-        background: #f6f3ec;
-        color: #191814;
+        background: var(--bg);
+        color: var(--text);
         font-family:
-          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC",
+          ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC",
           "Microsoft YaHei", sans-serif;
       }
 
-      main {
-        margin: 0 auto;
-        max-width: 1120px;
-        min-height: 100vh;
-        padding: 54px 22px;
-      }
-
-      h1 {
-        font-size: clamp(38px, 7vw, 86px);
-        letter-spacing: 0;
-        line-height: 0.95;
-        margin: 0 0 18px;
-      }
-
-      .lead {
-        color: #676056;
-        font-size: 18px;
-        line-height: 1.7;
-        margin: 0 0 34px;
-        max-width: 760px;
-      }
-
-      .grid {
-        display: grid;
-        gap: 18px;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .project {
-        background: #fffaf0;
-        border: 1px solid rgba(25, 24, 20, 0.12);
-        border-radius: 18px;
+      a {
         color: inherit;
-        min-height: 420px;
+      }
+
+      .hero {
+        background:
+          linear-gradient(90deg, rgba(16, 18, 15, 0.94), rgba(16, 18, 15, 0.72)),
+          radial-gradient(circle at 78% 38%, rgba(155, 226, 124, 0.28), transparent 34%),
+          url("assets/icon.png") right 10% center / min(58vw, 620px) auto no-repeat,
+          #10120f;
+        min-height: 92vh;
         overflow: hidden;
-        padding: 26px;
         position: relative;
+      }
+
+      .hero::after {
+        background: linear-gradient(180deg, transparent, rgba(16, 18, 15, 0.92));
+        bottom: 0;
+        content: "";
+        height: 160px;
+        left: 0;
+        position: absolute;
+        right: 0;
+      }
+
+      .nav,
+      .hero-inner,
+      .section,
+      .footer-inner {
+        margin: 0 auto;
+        max-width: 1160px;
+        padding-left: 22px;
+        padding-right: 22px;
+      }
+
+      .nav {
+        align-items: center;
+        display: flex;
+        gap: 18px;
+        justify-content: space-between;
+        padding-bottom: 18px;
+        padding-top: 22px;
+        position: relative;
+        z-index: 2;
+      }
+
+      .brand {
+        align-items: center;
+        display: inline-flex;
+        gap: 10px;
         text-decoration: none;
       }
 
-      .project.dark {
-        background:
-          radial-gradient(circle at 76% 14%, rgba(125, 211, 252, 0.38), transparent 28%),
-          linear-gradient(150deg, #08111f, #151a2c 52%, #05070d);
-        color: #f8fafc;
+      .brand img {
+        border-radius: 12px;
+        height: 42px;
+        width: 42px;
       }
 
-      .tag {
-        border: 1px solid currentColor;
-        border-radius: 999px;
-        display: inline-flex;
-        font-size: 13px;
-        margin-bottom: 22px;
-        opacity: 0.72;
-        padding: 7px 10px;
+      .brand span {
+        font-size: 18px;
+        font-weight: 900;
       }
 
-      .project h2 {
-        font-size: clamp(34px, 5vw, 58px);
-        line-height: 0.98;
-        margin: 0 0 14px;
-      }
-
-      .project p {
-        color: inherit;
-        font-size: 16px;
-        line-height: 1.65;
-        margin: 0;
-        max-width: 430px;
-        opacity: 0.72;
-      }
-
-      .features {
-        bottom: 24px;
+      .nav-links {
+        align-items: center;
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
-        left: 26px;
-        position: absolute;
-        right: 26px;
+        gap: 16px;
+        justify-content: flex-end;
       }
 
-      .features span {
-        background: rgba(25, 24, 20, 0.06);
-        border-radius: 999px;
-        font-size: 13px;
-        padding: 8px 10px;
-      }
-
-      .dark .features span {
-        background: rgba(255, 255, 255, 0.1);
-      }
-
-      .legal {
-        border-top: 1px solid rgba(25, 24, 20, 0.12);
-        display: flex;
-        flex-wrap: wrap;
-        gap: 14px;
-        margin-top: 28px;
-        padding-top: 20px;
-      }
-
-      .legal a {
-        color: #3f6f2e;
+      .nav-links a {
+        color: var(--muted);
         font-size: 14px;
         text-decoration: none;
       }
 
-      @media (max-width: 760px) {
-        .grid {
+      .hero-inner {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: calc(92vh - 82px);
+        padding-bottom: 96px;
+        padding-top: 56px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .eyebrow {
+        color: var(--green);
+        font-size: 15px;
+        font-weight: 800;
+        margin: 0 0 16px;
+      }
+
+      h1 {
+        font-size: clamp(52px, 10vw, 116px);
+        letter-spacing: 0;
+        line-height: 0.92;
+        margin: 0;
+        max-width: 820px;
+      }
+
+      .lead {
+        color: var(--soft);
+        font-size: clamp(18px, 2.2vw, 24px);
+        line-height: 1.68;
+        margin: 28px 0 0;
+        max-width: 680px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 34px;
+      }
+
+      .button {
+        align-items: center;
+        border-radius: 999px;
+        display: inline-flex;
+        font-weight: 900;
+        min-height: 52px;
+        padding: 0 22px;
+        text-decoration: none;
+      }
+
+      .button.primary {
+        background: var(--green);
+        color: #10120f;
+      }
+
+      .button.secondary {
+        border: 1px solid var(--line);
+        color: var(--green);
+      }
+
+      .hero-note {
+        bottom: 28px;
+        color: var(--muted);
+        font-size: 14px;
+        left: 22px;
+        position: absolute;
+      }
+
+      .section {
+        padding-bottom: 82px;
+        padding-top: 82px;
+      }
+
+      .section.compact {
+        padding-top: 42px;
+      }
+
+      .section-head {
+        align-items: end;
+        display: flex;
+        gap: 22px;
+        justify-content: space-between;
+        margin-bottom: 28px;
+      }
+
+      h2 {
+        font-size: clamp(32px, 5vw, 56px);
+        letter-spacing: 0;
+        line-height: 1.04;
+        margin: 0;
+        max-width: 720px;
+      }
+
+      .section-head p {
+        color: var(--muted);
+        line-height: 1.7;
+        margin: 0;
+        max-width: 360px;
+      }
+
+      .features {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .feature {
+        background: var(--panel);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 8px;
+        min-height: 220px;
+        padding: 22px;
+      }
+
+      .feature b {
+        color: var(--green);
+        display: block;
+        font-size: 30px;
+        margin-bottom: 20px;
+      }
+
+      .feature h3 {
+        font-size: 20px;
+        margin: 0 0 12px;
+      }
+
+      .feature p,
+      .copy p,
+      .meta p,
+      .steps li {
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.72;
+      }
+
+      .mockup-band {
+        background: #151815;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .mockup {
+        display: grid;
+        gap: 28px;
+        grid-template-columns: minmax(280px, 0.78fr) minmax(280px, 1fr);
+        min-height: 620px;
+      }
+
+      .phone {
+        align-self: center;
+        background: #090a09;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 42px;
+        box-shadow: 0 34px 110px rgba(0, 0, 0, 0.44);
+        justify-self: center;
+        max-width: 360px;
+        padding: 12px;
+        width: 100%;
+      }
+
+      .screen {
+        background: #151515;
+        border-radius: 32px;
+        min-height: 650px;
+        overflow: hidden;
+        padding: 22px;
+      }
+
+      .status {
+        color: var(--green);
+        font-size: 14px;
+        font-weight: 800;
+        margin: 18px 0 10px;
+      }
+
+      .screen h3 {
+        font-size: 42px;
+        line-height: 1.08;
+        margin: 0 0 18px;
+      }
+
+      .heart-box {
+        align-items: center;
+        background: #263823;
+        border-radius: 28px;
+        color: var(--red);
+        display: flex;
+        font-size: 48px;
+        height: 112px;
+        justify-content: center;
+        margin-bottom: 28px;
+        width: 112px;
+      }
+
+      .archive {
+        border: 1px solid rgba(155, 226, 124, 0.28);
+        border-radius: 8px;
+        margin: 20px 0;
+        padding: 16px;
+      }
+
+      .dots {
+        display: flex;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .dots span {
+        align-items: center;
+        background: rgba(155, 226, 124, 0.16);
+        border-radius: 999px;
+        color: var(--green);
+        display: flex;
+        font-size: 13px;
+        font-weight: 900;
+        height: 34px;
+        justify-content: center;
+        width: 34px;
+      }
+
+      .signal {
+        background: var(--green);
+        border-radius: 18px;
+        color: #10120f;
+        font-size: 18px;
+        font-weight: 900;
+        margin-top: 22px;
+        padding: 16px 18px;
+        text-align: center;
+      }
+
+      .copy {
+        align-self: center;
+      }
+
+      .copy h2 {
+        margin-bottom: 18px;
+      }
+
+      .steps {
+        counter-reset: step;
+        display: grid;
+        gap: 14px;
+        list-style: none;
+        margin: 28px 0 0;
+        padding: 0;
+      }
+
+      .steps li {
+        background: var(--panel);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 8px;
+        padding: 18px 18px 18px 62px;
+        position: relative;
+      }
+
+      .steps li::before {
+        align-items: center;
+        background: var(--green);
+        border-radius: 999px;
+        color: #10120f;
+        content: counter(step);
+        counter-increment: step;
+        display: flex;
+        font-weight: 900;
+        height: 30px;
+        justify-content: center;
+        left: 18px;
+        position: absolute;
+        top: 18px;
+        width: 30px;
+      }
+
+      .company {
+        background: var(--panel-soft);
+      }
+
+      .meta {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .meta div {
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+      }
+
+      .meta b {
+        color: var(--green);
+        display: block;
+        margin-bottom: 8px;
+      }
+
+      footer {
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .footer-inner {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        justify-content: space-between;
+        padding-bottom: 28px;
+        padding-top: 28px;
+      }
+
+      .footer-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+      }
+
+      .footer-links a,
+      .footer-inner p {
+        color: var(--muted);
+        font-size: 14px;
+        margin: 0;
+        text-decoration: none;
+      }
+
+      @media (max-width: 880px) {
+        .hero {
+          background:
+            linear-gradient(180deg, rgba(16, 18, 15, 0.88), rgba(16, 18, 15, 0.72)),
+            radial-gradient(circle at 70% 20%, rgba(155, 226, 124, 0.18), transparent 35%),
+            url("assets/icon.png") center 68% / 440px auto no-repeat,
+            #10120f;
+        }
+
+        .features,
+        .mockup,
+        .meta {
           grid-template-columns: 1fr;
+        }
+
+        .section-head {
+          align-items: start;
+          flex-direction: column;
+        }
+
+        .hero-inner {
+          justify-content: start;
+          padding-top: 34px;
+        }
+
+        .hero-note {
+          position: relative;
+          bottom: auto;
+          left: auto;
+          margin-top: 42px;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .nav {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .nav-links {
+          justify-content: flex-start;
+        }
+
+        .hero {
+          min-height: 860px;
+        }
+
+        .section {
+          padding-bottom: 58px;
+          padding-top: 58px;
+        }
+
+        .phone {
+          max-width: 320px;
+        }
+
+        .screen {
+          min-height: 580px;
+        }
+
+        .screen h3 {
+          font-size: 34px;
         }
       }
     </style>
   </head>
   <body>
+    <header class="hero">
+      <nav class="nav" aria-label="主导航">
+        <a class="brand" href="./index.html" aria-label="活着吗首页">
+          <img src="assets/icon.png" alt="活着吗图标" />
+          <span>活着吗</span>
+        </a>
+        <div class="nav-links">
+          <a href="#features">功能</a>
+          <a href="#story">理念</a>
+          <a href="#company">公司信息</a>
+          <a href="privacy.html">隐私政策</a>
+          <a href="terms.html">用户协议</a>
+        </div>
+      </nav>
+
+      <div class="hero-inner">
+        <p class="eyebrow">每日确认 · 心情记录 · 轻量好友互动</p>
+        <h1>今天，活着吗？</h1>
+        <p class="lead">
+          活着吗是一款轻量生活记录 App。选一个今天的心情，确认自己还在，写下随笔、照片和今天最想做的三件事，也能和好友轻轻确认彼此还在。
+        </p>
+        <div class="actions">
+          <a class="button primary" href="#features">看看它能做什么</a>
+          <a class="button secondary" href="privacy.html">查看隐私政策</a>
+        </div>
+        <p class="hero-note">当前处于 MVP 内测准备阶段，正式下载入口将在应用市场审核后开放。</p>
+      </div>
+    </header>
+
     <main>
-      <h1>两个方向，分开长大。</h1>
-      <p class="lead">
-        “活着吗”保留简单、随性、轻社交的日常确认；“点亮生命”作为独立项目，走更有仪式感的地球生命叙事。
-      </p>
+      <section class="section compact" id="features">
+        <div class="section-head">
+          <h2>给每一天留一个小小的信号。</h2>
+          <p>它不是效率工具，也不是打卡压力器。它更像一个安静的入口，让今天被确认、被看见、被存档。</p>
+        </div>
 
-      <section class="grid">
-        <a class="project" href="huozhema.html">
-          <span class="tag">Project A</span>
-          <h2>活着吗</h2>
-          <p>每天确认自己还活着。写一句给自己的话，记一点心情，做完今天最多三件事，顺手戳戳好友。</p>
-          <div class="features">
-            <span>每日活着打卡</span>
-            <span>送给自己一句话</span>
-            <span>三件事</span>
-            <span>戳一戳好友</span>
-          </div>
-        </a>
-
-        <a class="project dark" href="light-life.html">
-          <span class="tag">Project B</span>
-          <h2>点亮生命</h2>
-          <p>在地球上生活，点亮生命的每一天。用天气记录心情，留下年度重大事件，生成年度总结。</p>
-          <div class="features">
-            <span>点亮今天</span>
-            <span>天气心情</span>
-            <span>年度事件</span>
-            <span>年度总结</span>
-          </div>
-        </a>
+        <div class="features">
+          <article class="feature">
+            <b>♥</b>
+            <h3>确认还活着</h3>
+            <p>每天点一下，留下今天出现过的证据。简单、直接，不解释，也不汇报。</p>
+          </article>
+          <article class="feature">
+            <b>记</b>
+            <h3>随笔与照片</h3>
+            <p>一时兴起写几句，最多加三张照片，自动成为当天的电子日记。</p>
+          </article>
+          <article class="feature">
+            <b>三</b>
+            <h3>今天最想做的三件事</h3>
+            <p>只记三件真正想做的事。可以完成，可以标记大事，也可以留给明天。</p>
+          </article>
+          <article class="feature">
+            <b>戳</b>
+            <h3>好友轻互动</h3>
+            <p>戳一下好友，问一句还活着没。对方回馈后，状态就更新。</p>
+          </article>
+        </div>
       </section>
 
-      <nav class="legal" aria-label="法律信息">
-        <a href="privacy.html">隐私政策</a>
-        <a href="terms.html">用户协议</a>
-      </nav>
+      <section class="mockup-band" id="story">
+        <div class="section mockup">
+          <div class="phone" aria-label="活着吗 App 首页示意">
+            <div class="screen">
+              <div class="heart-box">♥</div>
+              <p class="status">今日还没确认</p>
+              <h3>今天，活着吗？</h3>
+              <p class="muted">点一下，不解释，不汇报。只是给自己留个小小的信号。</p>
+              <div class="archive">
+                <strong>今日存档</strong>
+                <div class="dots">
+                  <span>天</span>
+                  <span>心</span>
+                  <span>随</span>
+                  <span>箴</span>
+                  <span>事</span>
+                </div>
+              </div>
+              <p class="muted">送给自己的一句话</p>
+              <div class="signal">宇宙很大，今天的小崩溃不会定义你。</div>
+            </div>
+          </div>
+
+          <div class="copy">
+            <h2>有点丧，但还是往前。</h2>
+            <p>
+              这款 App 的语气不是打鸡血，也不假装每天都很积极。它接受普通、疲惫、低电量，也给你留下一点向前的余地。
+            </p>
+            <ol class="steps">
+              <li>先选今天心情，再确认自己还在。</li>
+              <li>写随笔、换一句箴言、保存今天最想做的三件事。</li>
+              <li>在打卡日历里回看某一天：天气、心情、照片、随笔和完成过的事。</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="section company" id="company">
+        <div class="section-head">
+          <h2>由北京森贝科技有限公司运营。</h2>
+          <p>我们会围绕轻量记录、个人陪伴和低压力社交继续打磨“活着吗”。</p>
+        </div>
+        <div class="meta">
+          <div>
+            <b>运营主体</b>
+            <p>北京森贝科技有限公司</p>
+          </div>
+          <div>
+            <b>联系邮箱</b>
+            <p><a href="mailto:senbeikeji@senbeikeji.cn">senbeikeji@senbeikeji.cn</a></p>
+          </div>
+          <div>
+            <b>上架状态</b>
+            <p>MVP 内测准备中，下载入口将在应用市场审核通过后开放。</p>
+          </div>
+        </div>
+      </section>
     </main>
+
+    <footer>
+      <div class="footer-inner">
+        <p>© 2026 北京森贝科技有限公司</p>
+        <div class="footer-links">
+          <a href="privacy.html">隐私政策</a>
+          <a href="terms.html">用户协议</a>
+          <a href="projects.html">项目入口</a>
+        </div>
+      </div>
+    </footer>
   </body>
 </html>
