@@ -13,6 +13,7 @@
 - 内测检查清单已整理：`INTERNAL_TEST_CHECKLIST.md`
 - 应用市场文案草稿已整理：`STORE_LISTING_DRAFT.md`
 - 公司运营主体、联系邮箱和用户支持邮箱已填写。
+- 公司主体上架材料清单已整理：`COMPANY_STORE_MATERIALS.md`
 
 ## 阻塞上架的缺口
 
@@ -44,14 +45,22 @@
    - 需要准备 iPhone 和 Android 截图。
    - 建议用测试账号填充数据，避免真实手机号暴露。
 
+7. 公司账号材料
+   - 统一社会信用代码、注册地址、公司电话、联系人仍需补齐。
+   - Apple / Google Play 组织账号通常需要 D-U-N-S Number。
+   - 需要公司官网或产品官网。
+
 ## 下一步执行顺序
 
-1. 决定正式登录方案：短信服务商 / 继续测试账号仅内测 / 其他登录方式。
-2. 正式包关闭测试账号按钮。
-3. 生成截图素材。
-4. EAS 额度恢复后重新打 Android preview 包。
-5. 用 Android preview 包跑完整 `INTERNAL_TEST_CHECKLIST.md`。
-6. 准备 iOS TestFlight。
+1. 补齐 `COMPANY_STORE_MATERIALS.md` 里的公司账号材料。
+2. 查询或申请 D-U-N-S Number。
+3. 准备公司官网或产品官网。
+4. 决定正式登录方案：短信服务商 / 继续测试账号仅内测 / 其他登录方式。
+5. 正式包关闭测试账号按钮。
+6. 生成截图素材。
+7. EAS 额度恢复后重新打 Android preview 包。
+8. 用 Android preview 包跑完整 `INTERNAL_TEST_CHECKLIST.md`。
+9. 准备 iOS TestFlight。
 
 ## 打包前命令
 
