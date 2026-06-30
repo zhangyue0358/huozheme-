@@ -1,6 +1,6 @@
 # 活着吗应用市场资料草稿
 
-更新日期：2026-06-25
+更新日期：2026-06-30
 
 ## 基础信息
 
@@ -9,10 +9,10 @@
 - 当前版本：`1.0.0`
 - 当前 Expo SDK：54
 - 当前阶段：MVP 内测候选，不包含“点亮生命”
-- 开发者主体类型：个人
-- 运营主体：张越
-- 联系邮箱：zhangyue0358@126.com
-- 用户支持邮箱：594705369@qq.com
+- 开发者主体类型：公司/组织
+- 运营主体：北京森贝科技有限公司
+- 联系邮箱：senbeikeji@senbeikeji.cn
+- 用户支持邮箱：senbeikeji@senbeikeji.cn
 - 国家/地区：中国
 
 ## 一句话介绍
@@ -114,8 +114,8 @@
 
 ## 上架前仍缺
 
-- 隐私政策网页 URL。
-- 用户协议网页 URL。
+- 隐私政策网页 URL：`https://zhangyue0358.github.io/huozheme-/privacy.html`
+- 用户协议网页 URL：`https://zhangyue0358.github.io/huozheme-/terms.html`
 - 正式手机号短信服务商。
 - 账号注销或人工注销通道。
 - App Store / Google Play 截图。

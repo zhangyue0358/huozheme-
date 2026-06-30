@@ -1,6 +1,6 @@
 # 活着吗上架缺口表
 
-更新日期：2026-06-25
+更新日期：2026-06-30
 
 ## 已基本就绪
 
@@ -12,7 +12,7 @@
 - Supabase 表结构、Storage、RLS 已有完整 SQL。
 - 内测检查清单已整理：`INTERNAL_TEST_CHECKLIST.md`
 - 应用市场文案草稿已整理：`STORE_LISTING_DRAFT.md`
-- 开发者主体类型、运营主体、联系邮箱和用户支持邮箱已填写。
+- 公司运营主体、联系邮箱和用户支持邮箱已填写。
 
 ## 阻塞上架的缺口
 
@@ -22,12 +22,11 @@
 
 2. 隐私政策和用户协议网页
    - `privacy.html` 和 `terms.html` 已生成。
-   - 还没有公开 URL。
-   - GitHub Pages 目标地址：
+   - GitHub Pages 已开启，公开 URL：
      - 隐私政策：`https://zhangyue0358.github.io/huozheme-/privacy.html`
      - 用户协议：`https://zhangyue0358.github.io/huozheme-/terms.html`
-   - 发布方式：GitHub 仓库 Settings -> Pages -> Deploy from branch -> `main` / root。
-   - 真实运营主体和联系邮箱已填写。
+   - 运营主体：北京森贝科技有限公司
+   - 联系邮箱/用户支持邮箱：`senbeikeji@senbeikeji.cn`
 
 3. 账号注销能力
    - 当前 App 内删除业务数据，但不删除 Supabase Auth 用户。
@@ -47,13 +46,12 @@
 
 ## 下一步执行顺序
 
-1. 把隐私政策、用户协议发布成可访问网页。
-2. 决定正式登录方案：短信服务商 / 继续测试账号仅内测 / 其他登录方式。
-3. 正式包关闭测试账号按钮。
-4. 生成截图素材。
-5. EAS 额度恢复后重新打 Android preview 包。
-6. 用 Android preview 包跑完整 `INTERNAL_TEST_CHECKLIST.md`。
-7. 准备 iOS TestFlight。
+1. 决定正式登录方案：短信服务商 / 继续测试账号仅内测 / 其他登录方式。
+2. 正式包关闭测试账号按钮。
+3. 生成截图素材。
+4. EAS 额度恢复后重新打 Android preview 包。
+5. 用 Android preview 包跑完整 `INTERNAL_TEST_CHECKLIST.md`。
+6. 准备 iOS TestFlight。
 
 ## 打包前命令
 
