@@ -122,7 +122,7 @@
 联系手机号：18810409001
 公司注册地址：北京市海淀区西北旺东路10号院东区15号楼-1层01
 统一社会信用代码：91110108MAET83N58J
-公司官网：未准备
+公司官网：https://zhangyue0358.github.io/huozheme-/
 D-U-N-S Number：未准备
 上架联系人姓名：张越
 上架联系人手机号：18810409001
@@ -148,8 +148,8 @@ legal@senbeikeji.cn
 
 ## 下一步
 
-1. 准备公司官网或产品官网入口。
-2. 申请/确认 Apple Organization 所需 D-U-N-S Number。
+1. 申请/确认 Apple Organization 所需 D-U-N-S Number。
+2. 后续把产品官网绑定到公司域名，例如 `huozhema.senbeikeji.cn`。
 3. 注册 Apple Developer Program 组织账号。
 4. 注册 Google Play Console 组织账号。
 5. 国内安卓市场准备软著、APP 备案和隐私合规材料。
