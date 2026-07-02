@@ -1,6 +1,6 @@
 # 活着吗上架缺口表
 
-更新日期：2026-06-30
+更新日期：2026-07-02
 
 ## 已基本就绪
 
@@ -14,6 +14,7 @@
 - 应用市场文案草稿已整理：`STORE_LISTING_DRAFT.md`
 - 公司运营主体、联系邮箱和用户支持邮箱已填写。
 - 公司主体上架材料清单已整理：`COMPANY_STORE_MATERIALS.md`
+- D-U-N-S Number 已获得：`517429052`
 
 ## 阻塞上架的缺口
 
@@ -47,21 +48,26 @@
 
 7. 公司账号材料
    - 统一社会信用代码、注册地址、公司电话、联系人已补齐。
-   - Apple / Google Play 组织账号通常需要 D-U-N-S Number。
+   - D-U-N-S Number 已获得：`517429052`。
    - 产品官网已准备：`https://zhangyue0358.github.io/huozheme-/`
    - 后续建议绑定公司域名，例如 `huozhema.senbeikeji.cn`。
 
+8. Apple 身份审核
+   - Apple Developer 注册因姓名触发合规筛查，已按邮件要求提交身份信息。
+   - 需要等待 Apple 审核放行后继续组织账号注册。
+
 ## 下一步执行顺序
 
-1. 查询或申请 D-U-N-S Number。
-2. 后续把产品官网绑定到公司域名。
-3. 确认 Apple/Google 能识别公司 D-U-N-S 信息。
+1. 等 Apple 身份筛查/身份信息审核完成。
+2. 继续 Apple Developer Program 组织账号注册。
+3. 注册 Google Play Console 组织账号。
 4. 决定正式登录方案：短信服务商 / 继续测试账号仅内测 / 其他登录方式。
-5. 正式包关闭测试账号按钮。
-6. 生成截图素材。
-7. EAS 额度恢复后重新打 Android preview 包。
-8. 用 Android preview 包跑完整 `INTERNAL_TEST_CHECKLIST.md`。
-9. 准备 iOS TestFlight。
+5. 明确账号注销路径：服务端删除 Supabase Auth 用户，或先提供人工注销邮箱。
+6. 正式包关闭测试账号按钮。
+7. 生成截图素材。
+8. EAS 额度恢复后重新打 Android preview 包。
+9. 用 Android preview 包跑完整 `INTERNAL_TEST_CHECKLIST.md`。
+10. 准备 iOS TestFlight。
 
 ## 打包前命令
 

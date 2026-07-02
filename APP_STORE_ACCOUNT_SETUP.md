@@ -1,6 +1,6 @@
 # 活着吗开发者账号办理步骤
 
-更新日期：2026-06-30
+更新日期：2026-07-02
 
 ## 结论
 
@@ -123,7 +123,7 @@
 公司注册地址：北京市海淀区西北旺东路10号院东区15号楼-1层01
 统一社会信用代码：91110108MAET83N58J
 公司官网：https://zhangyue0358.github.io/huozheme-/
-D-U-N-S Number：未准备
+D-U-N-S Number：517429052
 上架联系人姓名：张越
 上架联系人手机号：18810409001
 隐私政策生效日期：2026年6月30日
@@ -148,11 +148,10 @@ legal@senbeikeji.cn
 
 ## 下一步
 
-1. 申请/确认 Apple Organization 所需 D-U-N-S Number。
-2. 后续把产品官网绑定到公司域名，例如 `huozhema.senbeikeji.cn`。
-3. 注册 Apple Developer Program 组织账号。
-4. 注册 Google Play Console 组织账号。
-5. 国内安卓市场准备软著、APP 备案和隐私合规材料。
-6. 正式包关闭测试账号按钮。
-7. 打最新内测包。
-8. 准备截图和商店资料。
+1. 等 Apple 身份筛查/身份信息审核完成。
+2. 继续 Apple Developer Program 组织账号注册，填入 D-U-N-S：`517429052`。
+3. 注册 Google Play Console 组织账号。
+4. 国内安卓市场准备软著、APP 备案和隐私合规材料。
+5. 正式包关闭测试账号按钮。
+6. 打最新内测包。
+7. 准备截图和商店资料。
