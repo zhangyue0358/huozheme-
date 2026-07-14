@@ -1,0 +1,26 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="greenSlot" x1="270" y1="478" x2="612" y2="478" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A2F478"/>
+      <stop offset="0.55" stop-color="#8DEB67"/>
+      <stop offset="1" stop-color="#4E9B42"/>
+    </linearGradient>
+    <linearGradient id="knob" x1="588" y1="354" x2="750" y2="594" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#20241F"/>
+      <stop offset="1" stop-color="#070807"/>
+    </linearGradient>
+    <filter id="greenGlow" x="-40%" y="-50%" width="180%" height="200%">
+      <feGaussianBlur stdDeviation="26" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.46 0 0 0 0 1 0 0 0 0 0.25 0 0 0 0.9 0"/>
+      <feBlend in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <rect x="214" y="350" width="596" height="256" rx="128" fill="#080908"/>
+  <rect x="226" y="362" width="572" height="232" rx="116" fill="#121611"/>
+  <rect x="254" y="390" width="354" height="176" rx="88" fill="url(#greenSlot)" filter="url(#greenGlow)"/>
+  <rect x="254" y="390" width="354" height="176" rx="88" stroke="#D4FFC1" stroke-opacity="0.28" stroke-width="4"/>
+  <circle cx="660" cy="478" r="130" fill="#050605"/>
+  <circle cx="660" cy="478" r="112" fill="url(#knob)"/>
+  <circle cx="660" cy="478" r="104" stroke="#FFFFFF" stroke-opacity="0.05" stroke-width="8"/>
+  <path d="M430 430C414 413 388 411 370 427L350 445L330 427C312 411 286 413 270 430C252 451 256 483 275 506L350 582L425 506C444 483 448 451 430 430Z" fill="#FF2A3F"/>
+</svg>

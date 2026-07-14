@@ -7,18 +7,29 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "admin:process-account-deletion": "node scripts/process-account-deletion-retention.mjs",
+    "admin:user-report": "node scripts/admin-user-report.mjs",
+    "admin:lookup-user": "node scripts/admin-lookup-user.mjs",
+    "typecheck": "tsc --noEmit",
+    "check:dev-accounts": "node scripts/check-dev-accounts.mjs",
+    "check:release-config": "node scripts/check-release-config.mjs",
+    "check:screenshots": "node scripts/check-store-screenshots.mjs",
+    "export:screenshots": "node scripts/export-store-screenshots.mjs",
+    "prepare:screenshots": "node scripts/prepare-store-screenshots.mjs",
+    "reset:dev-accounts": "node scripts/reset-dev-accounts.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
-    "@supabase/supabase-js": "^2.106.0",
-    "expo": "~54.0.33",
+    "@supabase/supabase-js": "^2.80.0",
+    "expo": "~54.0.35",
+    "expo-image-picker": "~17.0.11",
     "expo-status-bar": "~3.0.9",
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-url-polyfill": "^3.0.0"
   },
   "devDependencies": {
+    "@expo/ngrok": "^4.1.3",
     "@types/react": "~19.1.0",
     "typescript": "~5.9.2"
   },

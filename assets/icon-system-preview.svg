@@ -1,0 +1,130 @@
+<svg width="1400" height="980" viewBox="0 0 1400 980" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1400" height="980" fill="#0F100E"/>
+  <text x="84" y="86" fill="#F4F1E8" font-size="34" font-weight="800" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif">活着吗 · 图标系统预览</text>
+  <text x="84" y="126" fill="#8F8B82" font-size="18" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif">方向：绿色开关确认今天还在，红心代表生命信号；功能页图标统一为黑绿红小符号。</text>
+
+  <defs>
+    <filter id="greenGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.42 0 0 0 0 1 0 0 0 0 0.25 0 0 0 0.55 0"/>
+      <feBlend in="SourceGraphic"/>
+    </filter>
+    <filter id="redGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 1 0 0 0 0 0.08 0 0 0 0 0.18 0 0 0 0.7 0"/>
+      <feBlend in="SourceGraphic"/>
+    </filter>
+    <linearGradient id="appBg" x1="224" y1="182" x2="556" y2="620" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#17291E"/>
+      <stop offset="1" stop-color="#0E120E"/>
+    </linearGradient>
+    <linearGradient id="switchGrad" x1="280" y1="400" x2="500" y2="400" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#77CF5E"/>
+      <stop offset="1" stop-color="#B2F28B"/>
+    </linearGradient>
+    <linearGradient id="panelGrad" x1="778" y1="288" x2="1188" y2="678" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1B241D"/>
+      <stop offset="1" stop-color="#151515"/>
+    </linearGradient>
+  </defs>
+
+  <g>
+    <rect x="84" y="174" width="612" height="668" rx="42" fill="#171816" stroke="#2B3329"/>
+    <text x="132" y="238" fill="#F4F1E8" font-size="24" font-weight="800" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif">App 主图标</text>
+    <text x="132" y="270" fill="#8F8B82" font-size="16" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif">桌面入口：点亮“还在”的状态</text>
+
+    <rect x="188" y="322" width="400" height="400" rx="92" fill="url(#appBg)"/>
+    <rect x="188" y="322" width="400" height="400" rx="92" stroke="#9BE27C" stroke-opacity="0.26" stroke-width="12"/>
+    <rect x="230" y="364" width="316" height="316" rx="72" stroke="#9BE27C" stroke-opacity="0.16" stroke-width="8"/>
+
+    <ellipse cx="388" cy="610" rx="142" ry="24" fill="#9BE27C" opacity="0.12"/>
+    <rect x="260" y="456" width="256" height="132" rx="66" fill="#263B2A" stroke="#9BE27C" stroke-opacity="0.36" stroke-width="8"/>
+    <rect x="284" y="480" width="208" height="84" rx="42" fill="url(#switchGrad)" filter="url(#greenGlow)"/>
+    <circle cx="444" cy="522" r="58" fill="#10120F"/>
+    <circle cx="444" cy="522" r="46" fill="#1D281E"/>
+    <path d="M472 501C462 490 445 488 433 499L427 504L421 499C409 488 392 490 382 501C370 514 373 535 385 549L427 592L469 549C481 535 484 514 472 501Z" fill="#FF1F3D" filter="url(#redGlow)"/>
+
+    <circle cx="294" cy="640" r="10" fill="#9BE27C" opacity="0.42"/>
+    <circle cx="334" cy="640" r="10" fill="#9BE27C" opacity="0.7"/>
+    <circle cx="374" cy="640" r="10" fill="#9BE27C"/>
+    <circle cx="414" cy="640" r="10" fill="#9BE27C" opacity="0.7"/>
+    <circle cx="454" cy="640" r="10" fill="#9BE27C" opacity="0.42"/>
+
+    <text x="388" y="778" text-anchor="middle" fill="#F4F1E8" font-size="22" font-weight="800" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif">开关红心</text>
+    <text x="388" y="808" text-anchor="middle" fill="#8F8B82" font-size="15" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif">不是医疗，是每天把自己切到“还在”</text>
+  </g>
+
+  <g>
+    <rect x="744" y="174" width="572" height="668" rx="42" fill="#171816" stroke="#2B3329"/>
+    <text x="792" y="238" fill="#F4F1E8" font-size="24" font-weight="800" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif">四个功能页图标</text>
+    <text x="792" y="270" fill="#8F8B82" font-size="16" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif">用于底部导航：今天 / 好友 / 想做 / 我</text>
+
+    <rect x="790" y="322" width="480" height="318" rx="36" fill="url(#panelGrad)" stroke="#2B3329"/>
+
+    <g transform="translate(842 374)">
+      <rect width="82" height="82" rx="28" fill="#20241F" stroke="#9BE27C" stroke-opacity="0.34" stroke-width="4"/>
+      <rect x="16" y="30" width="50" height="24" rx="12" fill="#9BE27C"/>
+      <circle cx="52" cy="42" r="15" fill="#10120F"/>
+      <path d="M59 35C56 32 51 32 48 35L45 38L42 35C39 32 34 32 31 35C27 39 28 45 32 49L45 62L58 49C62 45 63 39 59 35Z" fill="#FF1F3D"/>
+      <text x="41" y="126" text-anchor="middle" fill="#F4F1E8" font-size="18" font-weight="800" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif">今天</text>
+    </g>
+
+    <g transform="translate(964 374)">
+      <rect width="82" height="82" rx="28" fill="#20241F" stroke="#9BE27C" stroke-opacity="0.34" stroke-width="4"/>
+      <circle cx="28" cy="38" r="16" fill="#9BE27C"/>
+      <circle cx="56" cy="44" r="16" fill="#355F35" stroke="#9BE27C" stroke-width="4"/>
+      <path d="M28 58C40 70 56 70 68 58" stroke="#9BE27C" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="48" cy="24" r="7" fill="#FF1F3D"/>
+      <text x="41" y="126" text-anchor="middle" fill="#F4F1E8" font-size="18" font-weight="800" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif">好友</text>
+    </g>
+
+    <g transform="translate(1086 374)">
+      <rect width="82" height="82" rx="28" fill="#20241F" stroke="#9BE27C" stroke-opacity="0.34" stroke-width="4"/>
+      <circle cx="26" cy="25" r="8" fill="#9BE27C"/>
+      <rect x="42" y="19" width="24" height="12" rx="6" fill="#9BE27C" opacity="0.8"/>
+      <circle cx="26" cy="42" r="8" fill="#9BE27C" opacity="0.7"/>
+      <rect x="42" y="36" width="28" height="12" rx="6" fill="#9BE27C" opacity="0.5"/>
+      <circle cx="26" cy="59" r="8" fill="#FF1F3D"/>
+      <rect x="42" y="53" width="20" height="12" rx="6" fill="#9BE27C" opacity="0.35"/>
+      <text x="41" y="126" text-anchor="middle" fill="#F4F1E8" font-size="18" font-weight="800" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif">想做</text>
+    </g>
+
+    <g transform="translate(1208 374)">
+      <rect width="82" height="82" rx="28" fill="#20241F" stroke="#9BE27C" stroke-opacity="0.34" stroke-width="4"/>
+      <circle cx="41" cy="30" r="16" fill="#9BE27C"/>
+      <path d="M19 66C24 52 32 46 41 46C50 46 58 52 63 66" stroke="#9BE27C" stroke-width="8" stroke-linecap="round"/>
+      <path d="M54 28C51 24 45 24 41 28C37 24 31 24 28 28C24 33 25 40 30 44L41 55L52 44C57 40 58 33 54 28Z" fill="#FF1F3D"/>
+      <text x="41" y="126" text-anchor="middle" fill="#F4F1E8" font-size="18" font-weight="800" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif">我</text>
+    </g>
+
+    <g transform="translate(816 708)">
+      <rect width="428" height="74" rx="26" fill="#10120F" stroke="#2B3329"/>
+      <g transform="translate(30 15)">
+        <rect x="0" y="0" width="56" height="44" rx="18" fill="#9BE27C"/>
+        <path d="M35 16C32 13 28 13 25 16C22 13 18 13 15 16C12 20 13 25 16 29L25 38L34 29C38 25 39 20 35 16Z" fill="#FF1F3D"/>
+        <text x="28" y="66" text-anchor="middle" fill="#10120F" font-size="12" font-weight="900" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif">今天</text>
+      </g>
+      <g transform="translate(132 15)" opacity="0.72">
+        <circle cx="20" cy="22" r="13" fill="#9BE27C"/>
+        <circle cx="38" cy="22" r="13" fill="#355F35" stroke="#9BE27C" stroke-width="3"/>
+        <circle cx="32" cy="9" r="5" fill="#FF1F3D"/>
+        <text x="29" y="66" text-anchor="middle" fill="#8F8B82" font-size="12" font-weight="800" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif">好友</text>
+      </g>
+      <g transform="translate(238 15)" opacity="0.72">
+        <circle cx="16" cy="13" r="6" fill="#9BE27C"/>
+        <circle cx="16" cy="25" r="6" fill="#9BE27C" opacity="0.62"/>
+        <circle cx="16" cy="37" r="6" fill="#FF1F3D"/>
+        <rect x="30" y="9" width="26" height="8" rx="4" fill="#9BE27C"/>
+        <rect x="30" y="21" width="30" height="8" rx="4" fill="#9BE27C" opacity="0.5"/>
+        <rect x="30" y="33" width="20" height="8" rx="4" fill="#9BE27C" opacity="0.34"/>
+        <text x="30" y="66" text-anchor="middle" fill="#8F8B82" font-size="12" font-weight="800" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif">想做</text>
+      </g>
+      <g transform="translate(348 15)" opacity="0.72">
+        <circle cx="28" cy="17" r="11" fill="#9BE27C"/>
+        <path d="M13 42C17 31 22 28 28 28C34 28 39 31 43 42" stroke="#9BE27C" stroke-width="6" stroke-linecap="round"/>
+        <path d="M37 15C35 12 31 12 28 15C25 12 21 12 19 15C16 19 17 24 20 27L28 35L36 27C39 24 40 19 37 15Z" fill="#FF1F3D"/>
+        <text x="28" y="66" text-anchor="middle" fill="#8F8B82" font-size="12" font-weight="800" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif">我</text>
+      </g>
+    </g>
+  </g>
+</svg>

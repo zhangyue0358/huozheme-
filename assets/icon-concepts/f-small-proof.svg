@@ -1,0 +1,10 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" rx="226" fill="#10120F"/>
+  <rect x="106" y="106" width="812" height="812" rx="192" fill="#17271E" stroke="#9BE27C" stroke-opacity="0.24" stroke-width="18"/>
+  <rect x="210" y="252" width="604" height="520" rx="118" fill="#23251F" stroke="#9BE27C" stroke-opacity="0.32" stroke-width="12"/>
+  <path d="M615 385C586 353 538 348 506 376L512 382L518 376C486 348 438 353 409 385C376 423 383 480 416 520L512 618L608 520C641 480 648 423 615 385Z" fill="#FF1F3D"/>
+  <text x="512" y="714" text-anchor="middle" font-size="86" font-weight="900" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" fill="#9BE27C">今天在</text>
+  <circle cx="330" cy="210" r="20" fill="#9BE27C"/>
+  <circle cx="512" cy="210" r="20" fill="#9BE27C" opacity="0.7"/>
+  <circle cx="694" cy="210" r="20" fill="#9BE27C" opacity="0.42"/>
+</svg>

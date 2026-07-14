@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>活着吗 - 简单随性版</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #151515;
+        color: #f4f1e8;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC",
+          "Microsoft YaHei", sans-serif;
+      }
+
+      button,
+      input,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .layout {
+        display: grid;
+        gap: 34px;
+        grid-template-columns: minmax(320px, 390px) minmax(360px, 1fr);
+        margin: 0 auto;
+        max-width: 1160px;
+        min-height: 100vh;
+        padding: 34px 24px;
+      }
+
+      .phone {
+        align-self: center;
+        background: #0f100f;
+        border-radius: 34px;
+        box-shadow: 0 28px 80px rgba(62, 48, 30, 0.24);
+        height: 760px;
+        padding: 12px;
+        position: sticky;
+        top: 24px;
+      }
+
+      .screen {
+        background: #151515;
+        border-radius: 26px;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .topbar {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+        padding: 22px 18px 12px;
+      }
+
+      .date {
+        color: #9be27c;
+        font-size: 12px;
+        margin: 0 0 5px;
+      }
+
+      .brand {
+        font-size: 30px;
+        font-weight: 900;
+        margin: 0;
+      }
+
+      .face {
+        align-items: center;
+        background: #20201f;
+        color: #9be27c;
+        border-radius: 15px;
+        display: flex;
+        font-size: 18px;
+        font-weight: 900;
+        height: 42px;
+        justify-content: center;
+        width: 42px;
+      }
+
+      .content {
+        flex: 1;
+        overflow: auto;
+        padding: 0 16px 16px;
+        scrollbar-width: none;
+      }
+
+      .content::-webkit-scrollbar {
+        display: none;
+      }
+
+      .view {
+        display: none;
+        gap: 12px;
+      }
+
+      .view.active {
+        display: grid;
+      }
+
+      .card {
+        background: #20201f;
+        border: 1px solid rgba(43, 37, 29, 0.1);
+        border-radius: 18px;
+        padding: 16px;
+      }
+
+      .hero {
+        background: #1c2d24;
+        color: #f4f1e8;
+        min-height: 286px;
+        padding: 24px;
+      }
+
+      .big-dot {
+        align-items: center;
+        background: rgba(155, 226, 124, 0.13);
+        border-radius: 24px;
+        color: #ff1f3d;
+        display: flex;
+        font-size: 38px;
+        height: 78px;
+        justify-content: center;
+        margin-bottom: 46px;
+        width: 78px;
+      }
+
+      .big-dot span {
+        animation: heartbeat 1.36s infinite;
+      }
+
+      @keyframes heartbeat {
+        0%,
+        36%,
+        100% {
+          opacity: 0.82;
+          transform: scale(1);
+        }
+
+        8% {
+          opacity: 1;
+          transform: scale(1.16);
+        }
+
+        18% {
+          opacity: 0.92;
+          transform: scale(1.08);
+        }
+      }
+
+      .kicker {
+        color: #9be27c;
+        font-size: 13px;
+        margin: 0 0 8px;
+      }
+
+      .hero h2 {
+        font-size: 36px;
+        line-height: 1.05;
+        margin: 0 0 12px;
+      }
+
+      .muted {
+        color: #aaa69b;
+        font-size: 14px;
+        line-height: 1.55;
+        margin: 0;
+      }
+
+      .hero .muted {
+        color: #aaa69b;
+      }
+
+      .primary {
+        background: #9be27c;
+        border: 0;
+        border-radius: 16px;
+        color: #10120f;
+        font-weight: 900;
+        height: 50px;
+        margin-top: 18px;
+        width: 100%;
+      }
+
+      .metrics {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .metric {
+        background: #20201f;
+        border: 1px solid rgba(43, 37, 29, 0.1);
+        border-radius: 16px;
+        padding: 13px;
+      }
+
+      .metric b {
+        color: #9be27c;
+        display: block;
+        font-size: 24px;
+        margin: 8px 0 4px;
+      }
+
+      .metric:nth-child(2) b {
+        color: #ffd166;
+      }
+
+      .metric:nth-child(3) b {
+        color: #84c5f4;
+      }
+
+      .metric span {
+        color: #aaa69b;
+        font-size: 12px;
+      }
+
+      .section-head {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .section-head h3 {
+        font-size: 16px;
+        margin: 0;
+      }
+
+      .section-head span {
+        color: #aaa69b;
+        font-size: 13px;
+      }
+
+      .moods {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .mood {
+        background: #292825;
+        border: 1px solid transparent;
+        border-radius: 14px;
+        font-size: 22px;
+        height: 48px;
+      }
+
+      .mood.active {
+        background: #1c2d24;
+        color: #f4f1e8;
+      }
+
+      .input-line {
+        display: flex;
+        gap: 8px;
+      }
+
+      .input {
+        background: #292825;
+        border: 1px solid rgba(43, 37, 29, 0.1);
+        border-radius: 14px;
+        color: #f4f1e8;
+        flex: 1;
+        height: 46px;
+        min-width: 0;
+        padding: 0 12px;
+      }
+
+      .journal {
+        background: #292825;
+        border: 1px solid rgba(43, 37, 29, 0.1);
+        border-radius: 14px;
+        color: #f4f1e8;
+        min-height: 88px;
+        padding: 12px;
+        resize: none;
+        width: 100%;
+      }
+
+      .field-label {
+        color: #9be27c;
+        font-size: 13px;
+        font-weight: 900;
+        margin: 14px 0 8px;
+      }
+
+      .mini-button {
+        background: #1c2d24;
+        border: 0;
+        border-radius: 14px;
+        color: #f4f1e8;
+        font-weight: 900;
+        height: 46px;
+        width: 48px;
+      }
+
+      .mini-button.wide {
+        width: 72px;
+      }
+
+      .ghost-button {
+        background: #292825;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        color: #9be27c;
+        font-weight: 900;
+        height: 40px;
+        margin-top: 10px;
+        width: 100%;
+      }
+
+      .todo,
+      .friend,
+      .poke {
+        align-items: center;
+        background: #292825;
+        border: 1px solid rgba(43, 37, 29, 0.08);
+        border-radius: 15px;
+        display: flex;
+        gap: 10px;
+        min-height: 50px;
+        padding: 10px 12px;
+      }
+
+      .todo.done {
+        color: #aaa69b;
+        text-decoration: line-through;
+      }
+
+      .todo.important {
+        background: #2d281d;
+        border-color: rgba(215, 144, 31, 0.28);
+      }
+
+      .will-todo {
+        background: rgba(255, 31, 61, 0.13);
+        border-color: rgba(255, 31, 61, 0.42);
+        color: #ff1f3d;
+        font-weight: 900;
+      }
+
+      .inline-panel {
+        background: #20201f;
+        border: 1px solid rgba(43, 37, 29, 0.1);
+        border-radius: 16px;
+        display: none;
+        margin: 8px 0;
+        padding: 12px;
+      }
+
+      .inline-panel.active {
+        display: block;
+      }
+
+      .diary-text {
+        background: #292825;
+        border-radius: 14px;
+        color: #f4f1e8;
+        font-size: 12px;
+        line-height: 1.65;
+        margin: 8px 0 0;
+        padding: 12px;
+        white-space: pre-line;
+      }
+
+      .time-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .time-chip {
+        background: #292825;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 999px;
+        color: #aaa69b;
+        flex: 1;
+        font-size: 12px;
+        font-weight: 900;
+        height: 34px;
+      }
+
+      .time-chip.active {
+        background: #9be27c;
+        color: #10120f;
+      }
+
+      .check {
+        color: #756f63;
+        width: 22px;
+      }
+
+      .avatar {
+        align-items: center;
+        background: #9be27c;
+        border-radius: 14px;
+        display: flex;
+        flex: 0 0 42px;
+        font-weight: 900;
+        height: 42px;
+        justify-content: center;
+      }
+
+      .friend-main {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .friend-main b {
+        display: block;
+      }
+
+      .friend-main span {
+        color: #aaa69b;
+        display: block;
+        font-size: 12px;
+        margin-top: 3px;
+      }
+
+      .poke-btn {
+        background: #151515;
+        border: 1px solid rgba(43, 37, 29, 0.12);
+        border-radius: 999px;
+        font-size: 12px;
+        padding: 8px 10px;
+      }
+
+      .tabbar {
+        background: #151515;
+        border-top: 1px solid rgba(43, 37, 29, 0.1);
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(4, 1fr);
+        padding: 12px 14px 16px;
+      }
+
+      .tab {
+        background: transparent;
+        border: 0;
+        border-radius: 16px;
+        color: #aaa69b;
+        display: grid;
+        gap: 2px;
+        height: 52px;
+        place-items: center;
+      }
+
+      .tab.active {
+        background: #1c2d24;
+        color: #f4f1e8;
+        font-weight: 900;
+      }
+
+      .side {
+        align-self: center;
+      }
+
+      .side h1 {
+        font-size: clamp(42px, 6vw, 82px);
+        line-height: 0.95;
+        margin: 0 0 18px;
+      }
+
+      .side p {
+        color: #aaa69b;
+        font-size: 18px;
+        line-height: 1.7;
+        margin: 0 0 24px;
+        max-width: 650px;
+      }
+
+      .notes {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .note {
+        background: rgba(255, 250, 241, 0.75);
+        border: 1px solid rgba(43, 37, 29, 0.1);
+        border-radius: 16px;
+        padding: 14px;
+      }
+
+      .note b {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      .note span {
+        color: #aaa69b;
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      @media (max-width: 880px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .phone {
+          position: static;
+        }
+      }
+
+      @media (max-width: 520px) {
+        .layout {
+          padding: 0;
+        }
+
+        .phone {
+          border-radius: 0;
+          height: 100vh;
+          padding: 0;
+        }
+
+        .screen {
+          border-radius: 0;
+        }
+
+        .side {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="layout">
+      <section class="phone">
+        <div class="screen">
+          <header class="topbar">
+            <div>
+              <p class="date">6月5日 星期五</p>
+              <h1 class="brand">活着吗</h1>
+            </div>
+            <div class="face" id="reminderOpen">醒</div>
+          </header>
+
+          <div class="content">
+            <section class="view active" data-view="today">
+              <article class="card hero">
+                <div class="big-dot"><span>♥</span></div>
+                <p class="kicker">今日已打卡</p>
+                <h2>还活着，挺好。</h2>
+                <p class="muted" id="quote">送给自己：今天不用很厉害，能把自己带到晚上就很好。</p>
+                <button class="primary" id="aliveBtn" type="button">确认我还活着</button>
+              </article>
+
+              <div class="metrics">
+                <div class="metric"><span>累计存活</span><b id="days">129 天</b></div>
+                <div class="metric"><span>连续存活</span><b>8 天</b></div>
+                <div class="metric"><span>今天要做的</span><b id="doneMeta">2 件</b></div>
+              </div>
+
+              <article class="card">
+                <div class="section-head"><h3>今天心情</h3><span>随便记一下</span></div>
+                <div class="moods" id="moods">
+                  <button class="mood active" data-quote="送给自己：今天不用很厉害，能把自己带到晚上就很好。" type="button">🙂</button>
+                  <button class="mood" data-quote="送给自己：不太行也算一种行，至少你还在。" type="button">😶</button>
+                  <button class="mood" data-quote="送给自己：烦是烦了点，但今天不是你的全部人生。" type="button">😵</button>
+                  <button class="mood" data-quote="送给自己：先睡一觉，很多事明天再说。" type="button">😴</button>
+                  <button class="mood" data-quote="送给自己：今天允许自己慢一点，慢也在往前。" type="button">😌</button>
+                  <button class="mood" data-quote="送给自己：有些日子只要没有放弃，就已经算赢。" type="button">🫡</button>
+                </div>
+                <p class="field-label">随笔小记</p>
+                <textarea class="journal" id="journalInput" placeholder="一时兴起的话，可以写在这里。"></textarea>
+                <button class="ghost-button" id="journalOpen" type="button">查看今天的电子日记</button>
+              </article>
+
+              <article class="card">
+                <div class="section-head"><h3>送给自己的一句话</h3><span>每日箴言</span></div>
+                <div class="input-line">
+                  <input class="input" id="quoteInput" value="今天不用很厉害，能把自己带到晚上就很好。" />
+                  <button class="mini-button" id="quoteSave" type="button">存</button>
+                  <button class="mini-button wide" id="quoteShuffle" type="button">换一句</button>
+                </div>
+              </article>
+
+              <article class="card">
+                <div class="section-head"><h3>今天最想做的三件事</h3><span>大事可标记</span></div>
+                <div id="todayTodos"></div>
+              </article>
+            </section>
+
+            <section class="view" data-view="friends">
+              <article class="card">
+                <div class="section-head"><h3>好友存活雷达</h3><span>戳一下，看看还活着没</span></div>
+                <div class="section-head"><h3>今天已确认</h3><span>1</span></div>
+                <div class="friend">
+                  <div class="avatar">北</div>
+                  <div class="friend-main"><b>小北</b><span>今天 08:42 已打卡</span></div>
+                  <button class="poke-btn" type="button">戳一下</button>
+                </div>
+                <div class="section-head"><h3>待确认是否活着</h3><span>2</span></div>
+                <div class="friend">
+                  <div class="avatar">M</div>
+                  <div class="friend-main"><b>Momo</b><span>昨天出现过</span></div>
+                  <button class="poke-btn" type="button">戳一下</button>
+                </div>
+                <div class="friend">
+                  <div class="avatar">醒</div>
+                  <div class="friend-main"><b>陈醒醒</b><span>3 天没出现</span></div>
+                  <button class="poke-btn" type="button">戳一下</button>
+                </div>
+              </article>
+              <article class="card poke" id="pokeLog">还没戳好友。</article>
+            </section>
+
+            <section class="view" data-view="todos">
+              <article class="card">
+                <div class="section-head"><h3>今天最想做的三件事</h3><span>最多三件</span></div>
+                <div class="input-line">
+                  <input class="input" id="todoInput" maxlength="24" placeholder="写下今天想完成的一件事" />
+                  <button class="mini-button" id="todoAdd" type="button">+</button>
+                </div>
+              </article>
+              <article class="card">
+                <div id="allTodos"></div>
+              </article>
+            </section>
+
+            <section class="view" data-view="me">
+              <article class="card hero">
+                <div class="big-dot">越</div>
+                <p class="kicker">我的状态</p>
+                <h2>今天还在。</h2>
+                <p class="muted">活着吗不用证明人生很精彩，只记录你确实来过今天。</p>
+              </article>
+              <div class="metrics">
+                <div class="metric"><span>累计存活</span><b>129 天</b></div>
+                <div class="metric"><span>连续存活</span><b>8 天</b></div>
+                <div class="metric"><span>今天要做的</span><b>2 件</b></div>
+              </div>
+              <article class="card">
+                <div class="section-head"><h3>设置</h3><span>轻一点</span></div>
+                <div class="todo" id="allDiaryOpen">查看所有日记</div>
+                <div class="inline-panel" id="diaryListPanel">
+                  <b>6月5日 星期五</b>
+                  <div class="diary-text" id="diaryPreview"></div>
+                  <p class="muted" style="margin-top: 8px">更早的日记会在接入历史打卡列表后出现在这里。</p>
+                </div>
+                <div class="todo" id="reminderSettingOpen">提醒时间：晚上 <span id="reminderTimeText">22:30</span></div>
+                <div class="inline-panel" id="reminderPanel">
+                  <b>轻提醒</b>
+                  <p class="muted" style="margin-top: 8px">每天到点提醒你确认活着。正式版会接系统通知。</p>
+                  <div class="time-row">
+                    <button class="time-chip" data-time="21:30" type="button">21:30</button>
+                    <button class="time-chip active" data-time="22:30" type="button">22:30</button>
+                    <button class="time-chip" data-time="23:00" type="button">23:00</button>
+                  </div>
+                </div>
+                <div class="todo">好友可见：今日是否打卡</div>
+                <div class="todo">删除本应用数据</div>
+                <div class="todo will-todo">我的遗嘱：本机草稿</div>
+              </article>
+            </section>
+          </div>
+
+          <nav class="tabbar">
+            <button class="tab active" data-tab="today" type="button">今天</button>
+            <button class="tab" data-tab="friends" type="button">好友</button>
+            <button class="tab" data-tab="todos" type="button">三件事</button>
+            <button class="tab" data-tab="me" type="button">我</button>
+          </nav>
+        </div>
+      </section>
+
+      <aside class="side">
+        <h1>简单一点，活着就行。</h1>
+        <p>“活着吗”主打低压力、随性、轻社交。它不是宏大叙事，也不是效率工具，只是每天给自己留个信号，顺手看看朋友还在不在。</p>
+        <div class="notes">
+          <div class="note"><b>每日打卡</b><span>确认自己还活着，不需要解释今天过得怎么样。</span></div>
+          <div class="note"><b>每日箴言</b><span>送给自己一句话，可以很丧，也可以很温柔。</span></div>
+          <div class="note"><b>三件事</b><span>今天完成的小事，大事可以重点标记。</span></div>
+          <div class="note"><b>戳一戳</b><span>好友没出现时，轻轻戳一下：喂，还活着没？</span></div>
+        </div>
+      </aside>
+    </main>
+
+    <script>
+      const tabs = Array.from(document.querySelectorAll(".tab"));
+      const views = Array.from(document.querySelectorAll(".view"));
+      const todos = [
+        { text: "喝水", done: true, important: false },
+        { text: "把重要邮件回掉", done: false, important: true },
+      ];
+      const quotePool = [
+        "今天不用很厉害，能把自己带到晚上就很好。",
+        "你不是一项任务，你是一个正在生活的人。",
+        "宇宙很大，今天的小崩溃不会定义你。",
+        "先把自己放回呼吸里，其他事稍后再说。",
+        "你已经穿过很多天，今天也可以慢慢穿过去。",
+        "不必证明值得存在，存在本身就已经成立。",
+      ];
+
+      function switchTab(name) {
+        tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === name));
+        views.forEach((view) => view.classList.toggle("active", view.dataset.view === name));
+      }
+
+      function renderTodos() {
+        const done = todos.filter((todo) => todo.done).length;
+        document.getElementById("doneMeta").textContent = `${todos.length} 件`;
+        const html = todos
+          .map(
+            (todo, index) => `
+              <button class="todo ${todo.done ? "done" : ""} ${todo.important ? "important" : ""}" data-index="${index}" type="button">
+                <span class="check">${todo.done ? "✓" : "○"}</span>
+                <span style="flex:1">${todo.text}</span>
+                ${todo.important ? "<strong>大事</strong>" : ""}
+              </button>
+            `,
+          )
+          .join("");
+        document.getElementById("todayTodos").innerHTML = html;
+        document.getElementById("allTodos").innerHTML = html;
+        document.querySelectorAll(".todo[data-index]").forEach((row) => {
+          row.addEventListener("click", () => {
+            todos[Number(row.dataset.index)].done = !todos[Number(row.dataset.index)].done;
+            renderTodos();
+          });
+        });
+      }
+
+      tabs.forEach((tab) => tab.addEventListener("click", () => switchTab(tab.dataset.tab)));
+      document.querySelectorAll(".mood").forEach((mood) => {
+        mood.addEventListener("click", () => {
+          document.querySelectorAll(".mood").forEach((item) => item.classList.remove("active"));
+          mood.classList.add("active");
+          document.getElementById("quote").textContent = mood.dataset.quote;
+          document.getElementById("quoteInput").value = mood.dataset.quote.replace("送给自己：", "");
+        });
+      });
+      document.getElementById("quoteSave").addEventListener("click", () => {
+        const value = document.getElementById("quoteInput").value.trim();
+        if (value) document.getElementById("quote").textContent = `送给自己：${value}`;
+      });
+      document.getElementById("quoteShuffle").addEventListener("click", () => {
+        const input = document.getElementById("quoteInput");
+        const index = quotePool.indexOf(input.value.trim());
+        const next = quotePool[(index + 1 + quotePool.length) % quotePool.length];
+        input.value = next;
+        document.getElementById("quote").textContent = `送给自己：${next}`;
+      });
+      function openJournal() {
+        const journal = document.getElementById("journalInput").value.trim() || "今天还没有写随笔。";
+        const mood = document.querySelector(".mood.active")?.dataset.quote?.replace("送给自己：", "") || "今天还在。";
+        const quote = document.getElementById("quoteInput").value.trim();
+        const done = todos.filter((todo) => todo.done).map((todo, index) => `${index + 1}. ${todo.text}`).join("\\n") || "今天还没有标记完成的事。";
+        return `累计存活：${document.getElementById("days").textContent}\\n\\n今天心情：${mood}\\n\\n随笔小记：${journal}\\n\\n送给自己的一句话：${quote}\\n\\n完成的三件事：\\n${done}`;
+      }
+      document.getElementById("reminderOpen").addEventListener("click", () => {
+        alert("这里会做成“提醒我确认活着”的入口。正式接推送前，先保留为轻提醒开关和时间设置。");
+      });
+      document.getElementById("journalOpen").addEventListener("click", () => alert(openJournal()));
+      document.getElementById("allDiaryOpen").addEventListener("click", () => {
+        document.getElementById("diaryPreview").textContent = openJournal();
+        document.getElementById("diaryListPanel").classList.toggle("active");
+      });
+      document.getElementById("reminderSettingOpen").addEventListener("click", () => {
+        document.getElementById("reminderPanel").classList.toggle("active");
+      });
+      document.querySelectorAll(".time-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          document.querySelectorAll(".time-chip").forEach((item) => item.classList.remove("active"));
+          chip.classList.add("active");
+          document.getElementById("reminderTimeText").textContent = chip.dataset.time;
+        });
+      });
+      document.getElementById("aliveBtn").addEventListener("click", () => {
+        const days = document.getElementById("days");
+        days.textContent = `${Number.parseInt(days.textContent, 10) + 1} 天`;
+        document.getElementById("aliveBtn").textContent = "今天已经确认";
+      });
+      document.getElementById("todoAdd").addEventListener("click", () => {
+        const input = document.getElementById("todoInput");
+        const text = input.value.trim();
+        if (!text || todos.length >= 3) return;
+        todos.push({ text, done: false, important: text.length > 8 });
+        input.value = "";
+        renderTodos();
+      });
+      document.querySelectorAll(".poke-btn").forEach((button) => {
+        button.addEventListener("click", () => {
+          const name = button.parentElement.querySelector("b").textContent;
+          document.getElementById("pokeLog").textContent = `你戳了 ${name} 一下：还活着没？`;
+        });
+      });
+      renderTodos();
+    </script>
+  </body>
+</html>

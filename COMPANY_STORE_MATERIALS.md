@@ -1,6 +1,6 @@
 # 活着吗公司主体上架材料清单
 
-更新日期：2026-07-02
+更新日期：2026-07-14
 
 ## 当前已确定
 
@@ -22,14 +22,14 @@ iOS bundle id：com.huozhema.app
 上架联系人手机号：18810409001
 ```
 
-## 还需要你补齐
+## 已补齐的关键材料
 
 ```text
 公司官网或产品官网：https://zhangyue0358.github.io/huozheme-/
 D-U-N-S Number：517429052
 ```
 
-建议优先补：
+当前优先事项：
 
 1. 继续完成 Apple Developer 组织账号注册。
 2. 注册 Google Play Console 组织账号。
@@ -53,7 +53,7 @@ D-U-N-S Number：517429052
 
 - 组织账号通过后，App Store 展示的 seller name 通常会是公司主体，而不是个人姓名。
 - D-U-N-S 信息要尽量和营业执照/公司官网信息一致。
-- 如果 D-U-N-S 暂时没有，先申请/查询，不要等提交时才处理。
+- D-U-N-S 已获得，后续在 Apple Developer Program 和 Google Play Console 组织账号中使用 `517429052`。
 
 ## D-U-N-S Number 是什么
 
@@ -134,8 +134,7 @@ D-U-N-S Number：517429052
 1. 等 Apple 身份筛查/身份信息审核完成。
 2. 继续 Apple Developer Program 组织账号注册，填入 D-U-N-S：`517429052`。
 3. 注册 Google Play Console 组织账号，填入同一 D-U-N-S。
-4. 决定正式登录方案，优先解决手机号短信服务商。
-5. 明确账号注销路径：服务端删除 Supabase Auth 用户，或先提供人工注销邮箱。
+4. 确认审核登录方案：可收码测试手机号、临时审核账号，或审核团队可自行使用手机号注册。
+5. 明确账号注销路径：App 内二次确认提交注销请求，后台脚本按保留期清理，并在内容保留期结束后删除 Supabase Auth 用户、清理已完成注销请求；上线前配置 GitHub Actions Secrets 并手动运行验证。
 6. 正式包关闭测试账号按钮。
-7. 准备 App Store / Google Play 截图。
-8. 等 EAS Android 构建额度恢复，重新打 Android preview 包。
+7. 等 EAS Android 构建额度恢复，重新打 Android preview 包。

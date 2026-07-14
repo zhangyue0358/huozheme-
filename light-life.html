@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>点亮生命 - 地球生命版</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background:
+          radial-gradient(circle at 16% 18%, rgba(125, 211, 252, 0.22), transparent 26%),
+          radial-gradient(circle at 72% 10%, rgba(165, 180, 252, 0.18), transparent 30%),
+          linear-gradient(135deg, #07111f 0%, #10131f 46%, #05070d 100%);
+        color: #f8fafc;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC",
+          "Microsoft YaHei", sans-serif;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .layout {
+        display: grid;
+        gap: 30px;
+        grid-template-columns: minmax(320px, 390px) minmax(360px, 1fr);
+        margin: 0 auto;
+        max-width: 1160px;
+        min-height: 100vh;
+        padding: 34px 24px;
+      }
+
+      .phone {
+        align-self: center;
+        background: linear-gradient(145deg, rgba(226, 232, 240, 0.22), rgba(71, 85, 105, 0.1));
+        border: 1px solid rgba(226, 232, 240, 0.22);
+        border-radius: 34px;
+        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
+        height: 760px;
+        padding: 12px;
+        position: sticky;
+        top: 24px;
+      }
+
+      .screen {
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+          #080b12;
+        background-size: 28px 28px;
+        border-radius: 26px;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .topbar {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+        padding: 22px 18px 12px;
+      }
+
+      .date {
+        color: #7dd3fc;
+        font-size: 12px;
+        margin: 0 0 5px;
+      }
+
+      .brand {
+        font-size: 28px;
+        font-weight: 900;
+        margin: 0;
+      }
+
+      .earth {
+        align-items: center;
+        animation: breathe 3.6s ease-in-out infinite;
+        background:
+          radial-gradient(circle at 38% 32%, #7dd3fc 0 21%, #4ade80 22% 33%, #2563eb 34% 62%, #164e63 63%);
+        border-radius: 999px;
+        box-shadow: 0 0 0 10px rgba(125, 211, 252, 0.08), 0 0 48px rgba(125, 211, 252, 0.38);
+        display: flex;
+        font-size: 30px;
+        height: 78px;
+        justify-content: center;
+        margin-bottom: 46px;
+        width: 78px;
+      }
+
+      .content {
+        flex: 1;
+        overflow: auto;
+        padding: 0 16px 16px;
+        scrollbar-width: none;
+      }
+
+      .content::-webkit-scrollbar {
+        display: none;
+      }
+
+      .view {
+        display: none;
+        gap: 12px;
+      }
+
+      .view.active {
+        display: grid;
+      }
+
+      .card {
+        backdrop-filter: blur(18px);
+        background: rgba(15, 23, 42, 0.78);
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        border-radius: 18px;
+        padding: 16px;
+      }
+
+      .hero {
+        background:
+          radial-gradient(circle at 72% 16%, rgba(125, 211, 252, 0.42), transparent 28%),
+          radial-gradient(circle at 20% 22%, rgba(165, 180, 252, 0.22), transparent 24%),
+          linear-gradient(160deg, rgba(15, 23, 42, 0.94), rgba(17, 24, 39, 0.92) 48%, rgba(5, 7, 13, 0.98));
+        min-height: 302px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .orbit {
+        border: 1px solid rgba(155, 226, 124, 0.34);
+        border-radius: 999px;
+        height: 140px;
+        position: absolute;
+        right: -30px;
+        top: 24px;
+        transform: rotate(-24deg);
+        width: 140px;
+      }
+
+      .orbit::after {
+        animation: orbit 6s linear infinite;
+        background: #f8d66d;
+        border-radius: 999px;
+        box-shadow: 0 0 24px rgba(248, 214, 109, 0.75);
+        content: "";
+        height: 10px;
+        left: 18px;
+        position: absolute;
+        top: 16px;
+        width: 10px;
+      }
+
+      .kicker {
+        color: #7dd3fc;
+        font-size: 13px;
+        margin: 0 0 8px;
+      }
+
+      h2 {
+        font-size: 34px;
+        line-height: 1.08;
+        margin: 0 0 12px;
+      }
+
+      .muted {
+        color: #a7b4c7;
+        font-size: 14px;
+        line-height: 1.55;
+        margin: 0;
+      }
+
+      .primary {
+        background: linear-gradient(135deg, #a5b4fc, #7dd3fc 52%, #9be27c);
+        border: 0;
+        border-radius: 16px;
+        color: #10120f;
+        font-weight: 900;
+        height: 50px;
+        margin-top: 18px;
+        width: 100%;
+      }
+
+      .weather {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .weather button,
+      .event,
+      .friend {
+        align-items: center;
+        background: rgba(30, 41, 59, 0.72);
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        border-radius: 14px;
+        color: #f8fafc;
+        display: flex;
+        gap: 10px;
+        min-height: 56px;
+        padding: 10px;
+        text-align: left;
+      }
+
+      .weather button.active {
+        background: rgba(125, 211, 252, 0.16);
+        border-color: rgba(125, 211, 252, 0.58);
+      }
+
+      .icon {
+        align-items: center;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 13px;
+        display: flex;
+        flex: 0 0 38px;
+        font-size: 22px;
+        height: 38px;
+        justify-content: center;
+      }
+
+      .section-head {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .section-head h3 {
+        font-size: 16px;
+        margin: 0;
+      }
+
+      .section-head span {
+        color: #a7b4c7;
+        font-size: 13px;
+      }
+
+      .year-grid {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .month {
+        background: rgba(30, 41, 59, 0.72);
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        border-radius: 12px;
+        min-height: 48px;
+        padding: 8px;
+      }
+
+      .month.active {
+        background: rgba(155, 226, 124, 0.16);
+        border-color: rgba(155, 226, 124, 0.46);
+      }
+
+      .month b {
+        display: block;
+        font-size: 13px;
+      }
+
+      .month span {
+        color: #a7b4c7;
+        font-size: 11px;
+      }
+
+      .friend-main {
+        flex: 1;
+      }
+
+      .poke {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 999px;
+        color: #f8fafc;
+        font-size: 12px;
+        padding: 8px 10px;
+      }
+
+      .tabbar {
+        background: rgba(8, 11, 18, 0.92);
+        border-top: 1px solid rgba(148, 163, 184, 0.22);
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(4, 1fr);
+        padding: 12px 14px 16px;
+      }
+
+      .tab {
+        background: transparent;
+        border: 0;
+        border-radius: 16px;
+        color: #a7b4c7;
+        height: 52px;
+      }
+
+      .tab.active {
+        background: linear-gradient(135deg, #a5b4fc, #7dd3fc);
+        color: #10120f;
+        font-weight: 900;
+      }
+
+      .side {
+        align-self: center;
+      }
+
+      .side h1 {
+        font-size: clamp(42px, 6vw, 82px);
+        line-height: 0.95;
+        margin: 0 0 18px;
+      }
+
+      .side p {
+        color: #a7b4c7;
+        font-size: 18px;
+        line-height: 1.7;
+        margin: 0 0 24px;
+        max-width: 650px;
+      }
+
+      .notes {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .note {
+        background: rgba(15, 23, 42, 0.62);
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        border-radius: 16px;
+        padding: 14px;
+      }
+
+      .note b {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      .note span {
+        color: #a7b4c7;
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      @keyframes breathe {
+        50% {
+          transform: scale(1.07);
+        }
+      }
+
+      @keyframes orbit {
+        to {
+          transform: rotate(360deg) translateX(52px) rotate(-360deg);
+        }
+      }
+
+      @media (max-width: 880px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .phone {
+          position: static;
+        }
+      }
+
+      @media (max-width: 520px) {
+        .layout {
+          padding: 0;
+        }
+
+        .phone {
+          border-radius: 0;
+          height: 100vh;
+          padding: 0;
+        }
+
+        .screen {
+          border-radius: 0;
+        }
+
+        .side {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="layout">
+      <section class="phone">
+        <div class="screen">
+          <header class="topbar">
+            <div>
+              <p class="date">地球日历 2026</p>
+              <h1 class="brand">点亮生命</h1>
+            </div>
+            <div class="icon">🌍</div>
+          </header>
+
+          <div class="content">
+            <section class="view active" data-view="today">
+              <article class="card hero" id="hero">
+                <div class="orbit"></div>
+                <div class="earth" id="weatherIcon">☀️</div>
+                <p class="kicker">今日生命已点亮</p>
+                <h2>在地球上，点亮这一天。</h2>
+                <p class="muted" id="weatherCopy">晴朗。今天的你，仍在地球上认真生活。</p>
+                <button class="primary" id="lightBtn" type="button">点亮今天</button>
+              </article>
+              <article class="card">
+                <div class="section-head"><h3>天气预示心情</h3><span>选择今天</span></div>
+                <div class="weather">
+                  <button class="active" data-icon="☀️" data-copy="晴朗。今天的你，仍在地球上认真生活。" type="button"><span class="icon">☀️</span><span>晴朗<br /><small>清醒、有光</small></span></button>
+                  <button data-icon="🌤️" data-copy="多云。光没有消失，只是在云后慢慢经过。" type="button"><span class="icon">🌤️</span><span>多云<br /><small>有点迟缓</small></span></button>
+                  <button data-icon="🌧" data-copy="细雨。今天适合轻一点，慢一点。" type="button"><span class="icon">🌧</span><span>细雨<br /><small>低落但在</small></span></button>
+                  <button data-icon="⛈️" data-copy="雷暴。身体里有天气，轰鸣也是生命的证词。" type="button"><span class="icon">⛈️</span><span>雷暴<br /><small>很乱很满</small></span></button>
+                  <button data-icon="🌈" data-copy="彩虹。你穿过了一点雨，也接住了一点光。" type="button"><span class="icon">🌈</span><span>彩虹<br /><small>恢复、庆祝</small></span></button>
+                  <button data-icon="🌙" data-copy="平静的夜晚。今天不必热闹，安静也有重量。" type="button"><span class="icon">🌙</span><span>夜晚<br /><small>安静收束</small></span></button>
+                </div>
+              </article>
+            </section>
+
+            <section class="view" data-view="year">
+              <article class="card">
+                <div class="section-head"><h3>年度重大事件</h3><span>2026</span></div>
+                <div class="event"><span class="icon">🌱</span><span>2月：开始一个新的生活计划</span></div>
+                <div class="event"><span class="icon">🧭</span><span>5月：搬到新的城市，重新找节奏</span></div>
+                <div class="event"><span class="icon">🔥</span><span>6月：完成第一个一人公司 MVP</span></div>
+              </article>
+              <article class="card">
+                <div class="section-head"><h3>年度点亮地图</h3><span>按月回看</span></div>
+                <div class="year-grid">
+                  <div class="month active"><b>1月</b><span>21 天</span></div>
+                  <div class="month active"><b>2月</b><span>26 天</span></div>
+                  <div class="month"><b>3月</b><span>18 天</span></div>
+                  <div class="month active"><b>4月</b><span>28 天</span></div>
+                  <div class="month active"><b>5月</b><span>30 天</span></div>
+                  <div class="month"><b>6月</b><span>5 天</span></div>
+                </div>
+              </article>
+            </section>
+
+            <section class="view" data-view="summary">
+              <article class="card hero">
+                <div class="earth">🌈</div>
+                <p class="kicker">年度总结预览</p>
+                <h2>你在地球上发光了 128 天。</h2>
+                <p class="muted">最多的天气是多云，但你依然完成了很多次出门、重启、和重新相信。</p>
+              </article>
+              <article class="card">
+                <div class="event"><span class="icon">☀️</span><span>晴朗 38 天</span></div>
+                <div class="event"><span class="icon">🌤️</span><span>多云 44 天</span></div>
+                <div class="event"><span class="icon">🌧</span><span>细雨 22 天</span></div>
+              </article>
+            </section>
+
+            <section class="view" data-view="friends">
+              <article class="card">
+                <div class="section-head"><h3>一起点亮的人</h3><span>戳一下</span></div>
+                <div class="friend"><span class="icon">🌤️</span><span class="friend-main">小北<br /><small>今天多云，已点亮</small></span><button class="poke" type="button">戳一下</button></div>
+                <div class="friend"><span class="icon">🌙</span><span class="friend-main">Momo<br /><small>昨晚点亮</small></span><button class="poke" type="button">戳一下</button></div>
+                <div class="friend"><span class="icon">🌧</span><span class="friend-main">阿燃<br /><small>今天细雨，已点亮</small></span><button class="poke" type="button">戳一下</button></div>
+              </article>
+              <article class="card" id="pokeLog">还没戳好友。</article>
+            </section>
+          </div>
+
+          <nav class="tabbar">
+            <button class="tab active" data-tab="today" type="button">今天</button>
+            <button class="tab" data-tab="year" type="button">年度</button>
+            <button class="tab" data-tab="summary" type="button">总结</button>
+            <button class="tab" data-tab="friends" type="button">好友</button>
+          </nav>
+        </div>
+      </section>
+
+      <aside class="side">
+        <h1>把每天，点亮成生命的证据。</h1>
+        <p>“点亮生命”是更有仪式感的项目：天气即心情，年度重大事件组成生命地图，年末生成一份温柔的年度总结。</p>
+        <div class="notes">
+          <div class="note"><b>天气心情</b><span>晴朗、多云、细雨、雷暴、彩虹、夜晚，记录每天的内在天气。</span></div>
+          <div class="note"><b>年度事件</b><span>把今年真正改变你的节点留下来。</span></div>
+          <div class="note"><b>年度总结</b><span>不是成绩单，而是你在地球生活过的回声。</span></div>
+          <div class="note"><b>好友戳一戳</b><span>轻轻提醒彼此：今天也来点亮一下。</span></div>
+        </div>
+      </aside>
+    </main>
+
+    <script>
+      const tabs = Array.from(document.querySelectorAll(".tab"));
+      const views = Array.from(document.querySelectorAll(".view"));
+      function switchTab(name) {
+        tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === name));
+        views.forEach((view) => view.classList.toggle("active", view.dataset.view === name));
+      }
+      tabs.forEach((tab) => tab.addEventListener("click", () => switchTab(tab.dataset.tab)));
+      document.querySelectorAll(".weather button").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll(".weather button").forEach((item) => item.classList.remove("active"));
+          button.classList.add("active");
+          document.getElementById("weatherIcon").textContent = button.dataset.icon;
+          document.getElementById("weatherCopy").textContent = button.dataset.copy;
+        });
+      });
+      document.getElementById("lightBtn").addEventListener("click", () => {
+        document.getElementById("lightBtn").textContent = "今天已点亮";
+      });
+      document.querySelectorAll(".poke").forEach((button) => {
+        button.addEventListener("click", () => {
+          const name = button.parentElement.querySelector(".friend-main").textContent.trim().split(/\s+/)[0];
+          document.getElementById("pokeLog").textContent = `你戳了 ${name}：今天也来点亮一下？`;
+        });
+      });
+    </script>
+  </body>
+</html>

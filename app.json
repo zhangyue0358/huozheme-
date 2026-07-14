@@ -2,6 +2,7 @@
   "expo": {
     "name": "活着吗",
     "slug": "huozhema-app",
+    "description": "一个轻量的每日确认与好友状态 App：确认今天还活着，记下心情、随笔、照片和今天最想做的三件事。",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,21 +13,46 @@
       "resizeMode": "contain",
       "backgroundColor": "#151515"
     },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "允许“活着吗”选择照片，保存到今天的随笔小记。",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
+    ],
     "ios": {
       "bundleIdentifier": "com.huozhema.app",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "允许“活着吗”选择照片，保存到今天的随笔小记。"
+      },
       "supportsTablet": true
     },
     "android": {
       "package": "com.huozhema.app",
+      "permissions": [
+        "android.permission.READ_MEDIA_IMAGES"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#151515"
       },
-      "edgeToEdgeEnabled": true,
+      "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "bfb2f36f-61ff-40f0-b4c8-756ff862b654"
+      }
+    },
+    "owner": "zhangyue0358"
   }
 }

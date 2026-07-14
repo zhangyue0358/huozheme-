@@ -1,0 +1,13 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" rx="226" fill="#10120F"/>
+  <rect x="104" y="130" width="816" height="764" rx="190" fill="#17271E" stroke="#9BE27C" stroke-opacity="0.24" stroke-width="18"/>
+  <circle cx="338" cy="526" r="126" fill="#9BE27C"/>
+  <circle cx="686" cy="526" r="126" fill="#FFE071"/>
+  <text x="338" y="572" text-anchor="middle" font-size="118" font-weight="900" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" fill="#10120F">A</text>
+  <text x="686" y="572" text-anchor="middle" font-size="118" font-weight="900" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" fill="#10120F">B</text>
+  <path d="M564 430C546 410 516 407 495 425L512 440L529 425C508 407 478 410 460 430C439 454 444 491 465 516L512 564L559 516C580 491 585 454 564 430Z" fill="#FF1F3D"/>
+  <path d="M424 386C468 352 556 352 600 386" stroke="#9BE27C" stroke-width="22" stroke-linecap="round"/>
+  <path d="M410 688C464 730 560 730 614 688" stroke="#9BE27C" stroke-opacity="0.62" stroke-width="22" stroke-linecap="round"/>
+  <circle cx="512" cy="318" r="18" fill="#9BE27C"/>
+  <circle cx="512" cy="726" r="18" fill="#9BE27C" opacity="0.64"/>
+</svg>
