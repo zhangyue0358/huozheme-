@@ -1,30 +1,5 @@
-create table if not exists public.friend_request_attempts (
-  id bigint generated always as identity primary key,
-  requester_id uuid not null references public.profiles(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  success boolean not null default false
-);
-
-alter table public.friend_request_attempts enable row level security;
-
-drop policy if exists "profiles are readable by signed-in users" on public.profiles;
-drop policy if exists "users read own and related profiles" on public.profiles;
-
-create policy "users read own and related profiles"
-on public.profiles for select
-to authenticated
-using (
-  auth.uid() = id
-  or exists (
-    select 1
-    from public.friendships f
-    where f.status in ('pending', 'accepted')
-      and (
-        (f.requester_id = auth.uid() and f.addressee_id = profiles.id)
-        or (f.addressee_id = auth.uid() and f.requester_id = profiles.id)
-      )
-  )
-);
+-- Make phone-based friend requests resilient for older accounts.
+-- Run this once after patch_friend_request_security.sql.
 
 create or replace function public.normalize_phone_e164(raw_phone text)
 returns text
@@ -56,6 +31,17 @@ begin
 end;
 $$;
 
+grant execute on function public.normalize_phone_e164(text) to authenticated;
+grant execute on function public.normalize_phone_e164(text) to service_role;
+
+update public.profiles p
+set phone_e164 = u.phone
+from auth.users u
+where p.id = u.id
+  and (p.phone_e164 is null or p.phone_e164 = '')
+  and u.phone is not null
+  and u.phone <> '';
+
 create or replace function public.send_friend_request_by_phone(raw_phone text)
 returns void
 language plpgsql
@@ -66,6 +52,8 @@ declare
   current_user_id uuid := auth.uid();
   target_phone text := public.normalize_phone_e164(raw_phone);
   target_profile_id uuid;
+  current_phone text;
+  target_has_auth_user boolean;
   existing_status text;
   attempt_id bigint;
   attempts_last_hour integer;
@@ -78,6 +66,49 @@ begin
   if target_phone = '' then
     raise exception '请输入好友手机号';
   end if;
+
+  select coalesce(p.phone_e164, u.phone)
+  into current_phone
+  from auth.users u
+  left join public.profiles p on p.id = u.id
+  where u.id = current_user_id;
+
+  if current_phone = target_phone then
+    raise exception '不能添加自己';
+  end if;
+
+  update public.profiles p
+  set phone_e164 = u.phone
+  from auth.users u
+  where p.id = u.id
+    and (p.phone_e164 is null or p.phone_e164 = '')
+    and u.phone is not null
+    and u.phone <> '';
+
+  insert into public.profiles (id, nickname, phone_e164, avatar_color, show_status_to_friends)
+  select
+    u.id,
+    '用户' || right(u.phone, 4),
+    u.phone,
+    '#ffd166',
+    true
+  from auth.users u
+  where u.phone = target_phone
+    and u.id <> current_user_id
+    and not exists (
+      select 1
+      from public.profiles p
+      where p.id = u.id
+    )
+  on conflict (id) do nothing;
+
+  select exists (
+    select 1
+    from auth.users u
+    where u.phone = target_phone
+      and u.id <> current_user_id
+  )
+  into target_has_auth_user;
 
   select count(*)
   into attempts_last_hour
@@ -113,7 +144,11 @@ begin
   limit 1;
 
   if target_profile_id is null then
-    raise exception '没有找到可添加的用户';
+    if not target_has_auth_user then
+      raise exception '这个手机号还没有注册活着吗';
+    end if;
+
+    raise exception '对方资料还没同步，请让对方重新登录一次';
   end if;
 
   select f.status
@@ -145,9 +180,4 @@ begin
 end;
 $$;
 
-revoke all on function public.normalize_phone_e164(text) from public;
-grant execute on function public.normalize_phone_e164(text) to authenticated;
-grant execute on function public.normalize_phone_e164(text) to service_role;
-
-revoke all on function public.send_friend_request_by_phone(text) from public;
 grant execute on function public.send_friend_request_by_phone(text) to authenticated;

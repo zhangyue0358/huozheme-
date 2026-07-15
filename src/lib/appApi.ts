@@ -152,6 +152,7 @@ function firstProfile(value?: ProfileRow | ProfileRow[] | null) {
 function normalizePhone(value: string) {
   const compact = value.replace(/[\s-]/g, '');
   if (compact.startsWith('+')) return compact;
+  if (/^861\d{10}$/.test(compact)) return `+${compact}`;
   if (/^1\d{10}$/.test(compact)) return `+86${compact}`;
   return compact;
 }
@@ -691,10 +692,11 @@ export async function sendFriendRequest(userId: string, phone: string) {
   });
 
   if (error) {
-    if (error.code === 'PGRST202' || error.message.includes('send_friend_request_by_phone')) {
+    const message = error.message || '添加失败，请稍后再试';
+    if (error.code === 'PGRST202' || message.includes('send_friend_request_by_phone')) {
       throw new Error('数据库好友添加防刷补丁还没执行，请先运行 supabase/patch_friend_request_security.sql。');
     }
-    throw error;
+    throw new Error(message);
   }
 }
 

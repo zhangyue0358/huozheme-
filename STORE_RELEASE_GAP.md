@@ -1,6 +1,6 @@
 # 活着吗上架缺口表
 
-更新日期：2026-07-14
+更新日期：2026-07-15
 
 ## 已基本就绪
 
@@ -24,7 +24,11 @@
 - 公司主体上架材料清单已整理：`COMPANY_STORE_MATERIALS.md`
 - D-U-N-S Number 已获得：`517429052`
 - App 内已增加二次确认注销入口，提交后立即退出登录，并将昵称、手机号、好友关系等个人信息去标识化。
+- GitHub Actions 账号注销清理任务已配置 Secrets，并已手动运行成功。
 - 手机号加好友已改为后端 RPC，增加频率限制，并收紧 `profiles` 读取范围。
+- 登录页和好友添加页已显示默认 `+86` 区号，支持直接输入 11 位中国大陆手机号。
+- 旧库手机号资料回填补丁已执行，`139...` / `86139...` / `+86139...` 三种输入格式已在线验证可添加好友。
+- 重新登录和切换账号时已改为先同步账号快照，再进入首页，避免默认昵称或旧账号资料闪现。
 - Expo 已对齐到 SDK 54 期望 patch 版本：`54.0.35`。
 
 ## 阻塞上架的缺口
@@ -50,7 +54,7 @@
    - SQL 已提供 `process_account_deletion_retention()` 清理函数。
    - 已补 `npm run admin:process-account-deletion` 后台清理脚本、`SUPABASE_ACCOUNT_DELETION_CLEANUP.md` 操作文档和 GitHub Actions 定时任务模板。
    - 后台脚本会在内容保留期结束后删除 Supabase Auth 用户。
-   - 后续仍需配置 GitHub Actions Secrets，并手动运行一次确认成功。
+   - GitHub Actions Secrets 已配置，`Account deletion cleanup` 已手动运行成功。
 
 4. 后台运营能力
    - 当前不建议做完整后台管理 App。
@@ -60,8 +64,9 @@
 5. 手机号加好友防刷验证
    - 已提供 `send_friend_request_by_phone` RPC，限制每个用户 1 小时 10 次、1 天 30 次添加尝试。
    - 已收紧 `profiles` 读取策略，只允许读取自己和已有关联用户。
-   - 旧 Supabase 项目需要执行 `supabase/patch_friend_request_security.sql`。
-   - 上线前需要用 A/B 账号验证正常添加、重复添加、未找到手机号、频繁尝试提示。
+   - 旧 Supabase 项目已执行 `supabase/patch_friend_request_security.sql` 和 `supabase/patch_friend_request_phone_backfill.sql`。
+   - 已在线验证 `139...` / `86139...` / `+86139...` 三种输入格式能归一化为同一个中国大陆手机号。
+   - 上线前只需再用正式包复测：正常添加、重复添加、未找到手机号、频繁尝试提示。
 
 6. Android 构建额度
    - EAS 免费 Android 构建额度曾耗尽。
@@ -98,13 +103,12 @@
 3. 注册 Google Play Console 组织账号。
 4. 提交后台时复制 `STORE_REVIEW_LOGIN_PLAN.md` 中的审核备注，避免审核员无法接收中国短信。
 5. 正式包关闭测试账号按钮，并运行 `npm run check:release-config`。
-6. 按 `SUPABASE_ACCOUNT_DELETION_CLEANUP.md` 配置 GitHub Actions Secrets，手动运行一次 `Account deletion cleanup`，确认定时注销清理可用。
-7. 执行 `supabase/patch_friend_request_security.sql`，用 A/B 账号验证手机号加好友和限频提示。
-8. 按 `ADMIN_OPERATIONS.md` 验证最小后台运营命令。
-9. 用 `STORE_SUBMISSION_PACKAGE.md` 填写 App Store / Google Play 后台资料。
-10. EAS 额度恢复后重新打 Android preview 包。
-11. 用 Android preview 包跑完整 `INTERNAL_TEST_CHECKLIST.md`。
-12. 准备 iOS TestFlight。
+6. 定期查看 `Account deletion cleanup` 的 GitHub Actions 运行状态，确认注销清理任务持续成功。
+7. 按 `ADMIN_OPERATIONS.md` 验证最小后台运营命令。
+8. 用 `STORE_SUBMISSION_PACKAGE.md` 填写 App Store / Google Play 后台资料。
+9. EAS 额度恢复后重新打 Android preview 包。
+10. 用 Android preview 包跑完整 `INTERNAL_TEST_CHECKLIST.md`。
+11. 准备 iOS TestFlight。
 
 ## 打包前命令
 

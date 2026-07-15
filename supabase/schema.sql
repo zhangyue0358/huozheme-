@@ -119,6 +119,10 @@ begin
     return compact;
   end if;
 
+  if compact ~ '^861[0-9]{10}$' then
+    return '+' || compact;
+  end if;
+
   if compact ~ '^1[0-9]{10}$' then
     return '+86' || compact;
   end if;
@@ -137,6 +141,8 @@ declare
   current_user_id uuid := auth.uid();
   target_phone text := public.normalize_phone_e164(raw_phone);
   target_profile_id uuid;
+  current_phone text;
+  target_has_auth_user boolean;
   existing_status text;
   attempt_id bigint;
   attempts_last_hour integer;
@@ -149,6 +155,49 @@ begin
   if target_phone = '' then
     raise exception '请输入好友手机号';
   end if;
+
+  select coalesce(p.phone_e164, u.phone)
+  into current_phone
+  from auth.users u
+  left join public.profiles p on p.id = u.id
+  where u.id = current_user_id;
+
+  if current_phone = target_phone then
+    raise exception '不能添加自己';
+  end if;
+
+  update public.profiles p
+  set phone_e164 = u.phone
+  from auth.users u
+  where p.id = u.id
+    and (p.phone_e164 is null or p.phone_e164 = '')
+    and u.phone is not null
+    and u.phone <> '';
+
+  insert into public.profiles (id, nickname, phone_e164, avatar_color, show_status_to_friends)
+  select
+    u.id,
+    '用户' || right(u.phone, 4),
+    u.phone,
+    '#ffd166',
+    true
+  from auth.users u
+  where u.phone = target_phone
+    and u.id <> current_user_id
+    and not exists (
+      select 1
+      from public.profiles p
+      where p.id = u.id
+    )
+  on conflict (id) do nothing;
+
+  select exists (
+    select 1
+    from auth.users u
+    where u.phone = target_phone
+      and u.id <> current_user_id
+  )
+  into target_has_auth_user;
 
   select count(*)
   into attempts_last_hour
@@ -184,7 +233,11 @@ begin
   limit 1;
 
   if target_profile_id is null then
-    raise exception '没有找到可添加的用户';
+    if not target_has_auth_user then
+      raise exception '这个手机号还没有注册活着吗';
+    end if;
+
+    raise exception '对方资料还没同步，请让对方重新登录一次';
   end if;
 
   select f.status

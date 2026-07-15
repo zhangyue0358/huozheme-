@@ -1,6 +1,6 @@
 # 活着吗商店隐私与数据安全填表草稿
 
-更新日期：2026-07-14
+更新日期：2026-07-15
 
 本文件用于后续填写 App Store Connect 的 App Privacy 和 Google Play Console 的 Data safety。正式提交前，以商店后台当时的问卷文案为准。
 

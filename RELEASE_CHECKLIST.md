@@ -4,8 +4,10 @@
 
 - 开发环境测试账号 A/B 能进入 App，并走真实 Supabase 数据。
 - 手机号验证码登录能进入 App；验证码有效期 60 秒，倒计时结束后才能重新发送。
+- 登录页默认显示中国大陆区号 `+86`，用户直接输入 11 位手机号即可；`861xxxxxxxxxx` 和 `+861xxxxxxxxxx` 也能被兼容。
 - 重新发送验证码后，旧验证码失效，App 提示清晰。
 - 新用户首次登录会自动创建个人资料。
+- 重新登录或切换账号时，进入首页前先完成账号快照同步，不闪出默认昵称或上一个账号资料。
 - 用户能修改昵称。
 - 用户能每日打卡。
 - 未确认活着前，随笔、照片、心情、箴言、三件事等留痕动作会提示“请先确认还活着吗？”。
@@ -27,7 +29,7 @@
 ## 2. Supabase
 
 - 新项目在 SQL Editor 执行 `supabase/setup_all.sql`。
-- 如果已经建过旧表，至少执行 `supabase/patch_huozhema_complete.sql`、`supabase/patch_journal_photos.sql`、`supabase/patch_poke_type.sql`、`supabase/patch_weather_text.sql`、`supabase/patch_phone_friend_add.sql`、`supabase/patch_friend_request_security.sql`、`supabase/patch_delete_app_data_pokes.sql`、`supabase/patch_checkin_status_default.sql`、`supabase/patch_friendship_accepted_at.sql` 和 `supabase/patch_account_deletion_requests.sql`。
+- 如果已经建过旧表，至少执行 `supabase/patch_huozhema_complete.sql`、`supabase/patch_journal_photos.sql`、`supabase/patch_poke_type.sql`、`supabase/patch_weather_text.sql`、`supabase/patch_phone_friend_add.sql`、`supabase/patch_friend_request_security.sql`、`supabase/patch_friend_request_phone_backfill.sql`、`supabase/patch_delete_app_data_pokes.sql`、`supabase/patch_checkin_status_default.sql`、`supabase/patch_friendship_accepted_at.sql` 和 `supabase/patch_account_deletion_requests.sql`。
 - 如果 2026 年 6 月 11 日的测试日记误出现在 6 月 10 日，执行一次 `supabase/patch_fix_utc_shift_2026_06_11.sql`。
 - 确认 Storage bucket `journal-photos` 存在，且不是 public bucket。
 - 确认 `.env` 中配置了 `EXPO_PUBLIC_SUPABASE_URL`。
@@ -70,7 +72,7 @@
 
 ## 5. 正式发布前必须补
 
-- 账户注销：当前已有 App 内二次确认注销入口、SQL 清理函数、后台清理脚本、GitHub Actions 定时任务模板和 Supabase Auth 用户最终删除能力；后续必须配置 Secrets 并手动运行验证。
+- 账户注销：当前已有 App 内二次确认注销入口、SQL 清理函数、后台清理脚本、GitHub Actions 定时任务和 Supabase Auth 用户最终删除能力；GitHub Actions 已手动运行验证成功。
 - 手机号加好友的隐私防刷策略已补：后端 RPC 限频，App 不再直接按手机号查询 `profiles`。
 - 正式短信服务商已接入阿里云短信；发布前继续观察发送成功率、失败原因和成本。
 - 正式包使用手机号登录，不展示开发测试账号入口。

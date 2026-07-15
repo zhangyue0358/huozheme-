@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Image,
@@ -100,14 +101,6 @@ function fallbackPhoneForSession(session: Session | null) {
   return session?.user.phone || devPhone || '';
 }
 
-function maskDisplayPhone(phone: string) {
-  if (!phone) return '手机号未绑定';
-  const national = phone.startsWith('+86') ? phone.slice(3) : phone;
-  if (/^\d{11}$/.test(national)) return `${national.slice(0, 3)}****${national.slice(-4)}`;
-  if (phone.length <= 7) return phone;
-  return `${phone.slice(0, 4)}****${phone.slice(-3)}`;
-}
-
 function isLocalPhotoUrl(url: string) {
   return url.startsWith('file:') || url.startsWith('ph:') || url.startsWith('assets-library:');
 }
@@ -129,35 +122,6 @@ function keepStableSnapshotPhotos(previous: AppSnapshot, next: AppSnapshot): App
   return {
     ...next,
     journalPhotoUrls: stablePhotoUrls(previous.journalPhotoPaths, previous.journalPhotoUrls, next.journalPhotoPaths, next.journalPhotoUrls),
-  };
-}
-
-function accountPlaceholderSnapshot(userId: string, session: Session | null): AppSnapshot {
-  const phone = fallbackPhoneForSession(session);
-
-  return {
-    ...demoSnapshot,
-    aliveDays: 1,
-    aliveReplies: [],
-    checkedIn: false,
-    diaryEntries: [],
-    friends: [],
-    friendRequests: [],
-    incomingPokes: [],
-    sentPokes: [],
-    journalPhotoPaths: [],
-    journalPhotoUrls: [],
-    journalText: '',
-    profile: {
-      id: userId,
-      nickname: phone ? `用户${phone.slice(-4)}` : '加载中',
-      phoneE164: phone,
-      phoneMasked: maskDisplayPhone(phone),
-      avatarColor: demoSnapshot.profile.avatarColor,
-      showStatusToFriends: true,
-    },
-    streak: 0,
-    todos: [],
   };
 }
 
@@ -234,6 +198,7 @@ export default function App() {
   const [weatherPickerOpen, setWeatherPickerOpen] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [snapshotLoading, setSnapshotLoading] = useState(false);
   const quoteNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastPokeAlertId = useRef<string | null>(null);
@@ -243,27 +208,26 @@ export default function App() {
   const [appToast, setAppToast] = useState('');
   const appToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userId = session?.user.id;
-  const effectiveSnapshot =
-    !demoMode && userId && snapshot.profile.id === demoSnapshot.profile.id ? accountPlaceholderSnapshot(userId, session) : snapshot;
+  const snapshotReady = demoMode || !userId || snapshot.profile.id === userId;
 
-  const checkedIn = effectiveSnapshot.checkedIn;
-  const statusText = effectiveSnapshot.statusText;
-  const todos = effectiveSnapshot.todos;
-  const friends = effectiveSnapshot.friends;
-  const friendRequests = effectiveSnapshot.friendRequests;
-  const incomingPokes = effectiveSnapshot.incomingPokes;
-  const aliveReplies = effectiveSnapshot.aliveReplies;
-  const sentPokes = effectiveSnapshot.sentPokes;
-  const diaryEntries = effectiveSnapshot.diaryEntries;
-  const aliveDays = effectiveSnapshot.aliveDays;
-  const journalPhotoPaths = effectiveSnapshot.journalPhotoPaths;
-  const journalPhotoUrls = effectiveSnapshot.journalPhotoUrls;
+  const checkedIn = snapshot.checkedIn;
+  const statusText = snapshot.statusText;
+  const todos = snapshot.todos;
+  const friends = snapshot.friends;
+  const friendRequests = snapshot.friendRequests;
+  const incomingPokes = snapshot.incomingPokes;
+  const aliveReplies = snapshot.aliveReplies;
+  const sentPokes = snapshot.sentPokes;
+  const diaryEntries = snapshot.diaryEntries;
+  const aliveDays = snapshot.aliveDays;
+  const journalPhotoPaths = snapshot.journalPhotoPaths;
+  const journalPhotoUrls = snapshot.journalPhotoUrls;
   const journalPhotoCount = journalPhotoPaths.length;
-  const journalText = effectiveSnapshot.journalText;
-  const quoteText = effectiveSnapshot.quoteText;
-  const streak = effectiveSnapshot.streak;
-  const weatherText = effectiveSnapshot.weatherText;
-  const profile = effectiveSnapshot.profile;
+  const journalText = snapshot.journalText;
+  const quoteText = snapshot.quoteText;
+  const streak = snapshot.streak;
+  const weatherText = snapshot.weatherText;
+  const profile = snapshot.profile;
 
   const todayLabel = useMemo(() => {
     return new Intl.DateTimeFormat('zh-CN', {
@@ -352,8 +316,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const nextSnapshot = userId && !demoMode ? accountPlaceholderSnapshot(userId, session) : demoSnapshot;
-    setSnapshot(nextSnapshot);
+    setSnapshot(demoSnapshot);
     setJournalDraft(demoSnapshot.journalText);
     setQuoteDraft(demoSnapshot.quoteText);
     setSavedJournalText(demoSnapshot.journalText);
@@ -367,18 +330,28 @@ export default function App() {
     lastSnapshotJournalText.current = demoSnapshot.journalText;
     lastSnapshotQuoteText.current = demoSnapshot.quoteText;
     lastPokeAlertId.current = null;
-  }, [demoMode, session, userId]);
+  }, [demoMode, userId]);
 
   useEffect(() => {
-    if (!userId || demoMode) return;
+    if (!userId || demoMode) {
+      setSnapshotLoading(false);
+      return;
+    }
+
+    let cancelled = false;
 
     const profilePhone = fallbackPhoneForSession(session);
     const phoneName = profilePhone ? `用户${profilePhone.slice(-4)}` : '新朋友';
 
+    setSnapshotLoading(true);
     ensureProfile(userId, phoneName, profilePhone)
       .then(() => loadAppSnapshot(userId))
-      .then((nextSnapshot) => setSnapshot((current) => keepStableSnapshotPhotos(current, nextSnapshot)))
+      .then((nextSnapshot) => {
+        if (cancelled) return;
+        setSnapshot((current) => keepStableSnapshotPhotos(current, nextSnapshot));
+      })
       .catch(async (error) => {
+        if (cancelled) return;
         if (error instanceof Error && error.message.includes('账户注销处理中')) {
           await signOut();
           setSession(null);
@@ -387,7 +360,14 @@ export default function App() {
           return;
         }
         Alert.alert('同步失败', error.message);
+      })
+      .finally(() => {
+        if (!cancelled) setSnapshotLoading(false);
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [demoMode, session?.user.email, session?.user.phone, userId]);
 
   useEffect(() => {
@@ -1065,6 +1045,10 @@ export default function App() {
     return <LaunchScreen onUseDemo={() => setDemoMode(true)} />;
   }
 
+  if (!demoMode && hasSupabaseConfig && session && (!snapshotReady || snapshotLoading)) {
+    return <AccountLoadingScreen />;
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
@@ -1232,6 +1216,22 @@ export default function App() {
   );
 }
 
+function AccountLoadingScreen() {
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="light" />
+      <View style={styles.launch}>
+        <View style={styles.launchCard}>
+          <Text style={styles.launchKicker}>欢迎回来</Text>
+          <Text style={styles.launchTitle}>正在同步</Text>
+          <Text style={styles.launchCopy}>正在读取这个账号的昵称、日记和好友状态。</Text>
+          <ActivityIndicator color={colors.green} size="large" />
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
 function LaunchScreen({ onUseDemo }: { onUseDemo: () => void }) {
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -1274,6 +1274,7 @@ function AuthScreen({ onUseDemo }: { onUseDemo: () => void }) {
   function normalizePhone(value: string) {
     const compact = value.replace(/\s|-/g, '');
     if (compact.startsWith('+')) return compact;
+    if (/^861\d{10}$/.test(compact)) return `+${compact}`;
     if (/^1\d{10}$/.test(compact)) return `+86${compact}`;
     return compact;
   }
@@ -1356,15 +1357,18 @@ function AuthScreen({ onUseDemo }: { onUseDemo: () => void }) {
           <View style={styles.launchCard}>
           <Text style={styles.launchKicker}>欢迎回来</Text>
           <Text style={styles.launchTitle}>今天，活着吗？</Text>
-          <Text style={styles.launchCopy}>输入手机号获取 6 位验证码。中国手机号可直接输入 11 位，其他地区请带国际区号。</Text>
-          <TextInput
-            keyboardType="phone-pad"
-            onChangeText={setPhone}
-            placeholder="13800138000"
-            placeholderTextColor="#777268"
-            style={styles.authInput}
-            value={phone}
-          />
+          <Text style={styles.launchCopy}>默认中国大陆区号，直接输入 11 位手机号即可。其他地区请带国际区号。</Text>
+          <View style={styles.phoneInputWrap}>
+            <Text style={styles.phonePrefix}>+86</Text>
+            <TextInput
+              keyboardType="phone-pad"
+              onChangeText={setPhone}
+              placeholder="13800138000"
+              placeholderTextColor="#777268"
+              style={styles.phoneInput}
+              value={phone}
+            />
+          </View>
           <Pressable
             disabled={sending || resendCountdown > 0 || !phone.trim()}
             style={[styles.primaryButton, (sending || resendCountdown > 0 || !phone.trim()) && styles.disabledButton]}
@@ -1796,18 +1800,21 @@ function FriendsScreen({
   return (
     <View style={styles.stack}>
       <View style={styles.searchPanel}>
-        <TextInput
-          autoCapitalize="none"
-          autoCorrect={false}
-          onChangeText={setFriendDraft}
-          onSubmitEditing={submitRequest}
-          keyboardType="phone-pad"
-          placeholder="输入好友手机号"
-          placeholderTextColor="#777268"
-          returnKeyType="send"
-          style={styles.friendInput}
-          value={friendDraft}
-        />
+        <View style={styles.friendPhoneInputWrap}>
+          <Text style={styles.friendPhonePrefix}>+86</Text>
+          <TextInput
+            autoCapitalize="none"
+            autoCorrect={false}
+            onChangeText={setFriendDraft}
+            onSubmitEditing={submitRequest}
+            keyboardType="phone-pad"
+            placeholder="输入好友手机号"
+            placeholderTextColor="#777268"
+            returnKeyType="send"
+            style={styles.friendInput}
+            value={friendDraft}
+          />
+        </View>
         <Pressable disabled={!friendDraft.trim()} onPress={submitRequest} style={[styles.smallButton, !friendDraft.trim() && styles.disabledButton]}>
           <Text style={styles.smallButtonText}>添加</Text>
         </Pressable>
@@ -2697,6 +2704,29 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 14,
   },
+  phoneInputWrap: {
+    alignItems: 'center',
+    backgroundColor: colors.panel2,
+    borderColor: colors.line,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    height: 52,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+  },
+  phonePrefix: {
+    color: colors.green,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  phoneInput: {
+    color: colors.text,
+    flex: 1,
+    fontSize: 16,
+    height: 50,
+  },
   authHint: {
     color: colors.muted,
     fontSize: 13,
@@ -3236,6 +3266,18 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     minHeight: 38,
+  },
+  friendPhoneInputWrap: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+    minHeight: 38,
+  },
+  friendPhonePrefix: {
+    color: colors.green,
+    fontSize: 15,
+    fontWeight: '900',
   },
   smallButton: {
     backgroundColor: colors.green,
