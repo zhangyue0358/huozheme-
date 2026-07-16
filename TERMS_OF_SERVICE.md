@@ -36,7 +36,7 @@
 
 运营主体：北京森贝科技有限公司
 
-联系邮箱：senbeikeji@senbeikeji.cn
+联系邮箱：zhangyue@senbeikeji.cn
 
 用户支持邮箱：senbeikeji@senbeikeji.cn
 

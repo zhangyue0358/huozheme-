@@ -11,7 +11,7 @@
 - 当前阶段：MVP 内测候选，不包含“点亮生命”
 - 开发者主体类型：公司/组织
 - 运营主体：北京森贝科技有限公司
-- 联系邮箱：senbeikeji@senbeikeji.cn
+- 联系邮箱：zhangyue@senbeikeji.cn
 - 用户支持邮箱：senbeikeji@senbeikeji.cn
 - 国家/地区：中国
 

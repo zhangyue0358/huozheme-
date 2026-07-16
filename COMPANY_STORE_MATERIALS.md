@@ -7,7 +7,7 @@
 ```text
 应用名称：活着吗
 运营主体：北京森贝科技有限公司
-企业邮箱：senbeikeji@senbeikeji.cn
+企业邮箱：zhangyue@senbeikeji.cn
 国家/地区：中国
 隐私政策 URL：https://zhangyue0358.github.io/huozheme-/privacy.html
 用户协议 URL：https://zhangyue0358.github.io/huozheme-/terms.html
@@ -82,7 +82,7 @@ D-U-N-S Number：517429052
 注册地址：北京市海淀区西北旺东路10号院东区15号楼-1层01
 联系电话：18810409001
 联系人：张越
-联系邮箱：senbeikeji@senbeikeji.cn
+联系邮箱：zhangyue@senbeikeji.cn
 ```
 
 ## Google Play 组织账号
@@ -96,7 +96,7 @@ D-U-N-S Number：517429052
 - 组织电话：18810409001
 - 组织网站：https://zhangyue0358.github.io/huozheme-/
 - 联系人姓名：张越
-- 联系邮箱：senbeikeji@senbeikeji.cn
+- 联系邮箱：zhangyue@senbeikeji.cn
 - 联系电话：18810409001
 - 公开开发者邮箱：senbeikeji@senbeikeji.cn
 - 公开开发者电话：18810409001

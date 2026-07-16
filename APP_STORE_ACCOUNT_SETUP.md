@@ -17,7 +17,7 @@
 原因：
 
 - 公司主体更适合长期品牌运营、国内安卓市场、用户隐私合规和商业化。
-- 已有企业邮箱：`senbeikeji@senbeikeji.cn`，可以作为上架联系邮箱和用户支持邮箱。
+- 已有企业邮箱：`zhangyue@senbeikeji.cn`，可以作为上架联系邮箱；用户支持邮箱暂用 `senbeikeji@senbeikeji.cn`。
 - 避免个人开发者姓名作为 seller name 或开发者信息公开展示。
 
 ## Apple App Store
@@ -117,7 +117,7 @@
 开发者主体类型：公司/组织
 运营主体名称：北京森贝科技有限公司
 国家/地区：中国
-联系邮箱：senbeikeji@senbeikeji.cn
+联系邮箱：zhangyue@senbeikeji.cn
 用户支持邮箱：senbeikeji@senbeikeji.cn
 联系手机号：18810409001
 公司注册地址：北京市海淀区西北旺东路10号院东区15号楼-1层01
@@ -133,7 +133,7 @@ D-U-N-S Number：517429052
 建议邮箱：
 
 ```text
-senbeikeji@senbeikeji.cn
+zhangyue@senbeikeji.cn
 ```
 
 后续可以再补充更细的邮箱：
@@ -144,14 +144,13 @@ privacy@senbeikeji.cn
 legal@senbeikeji.cn
 ```
 
-当前先用 `senbeikeji@senbeikeji.cn` 作为统一联系邮箱即可。
+当前先用 `zhangyue@senbeikeji.cn` 作为上架联系邮箱，`senbeikeji@senbeikeji.cn` 作为用户支持邮箱。
 
 ## 下一步
 
-1. 等 Apple 身份筛查/身份信息审核完成。
-2. 继续 Apple Developer Program 组织账号注册，填入 D-U-N-S：`517429052`。
-3. 注册 Google Play Console 组织账号。
-4. 国内安卓市场准备软著、APP 备案和隐私合规材料。
-5. 正式包关闭测试账号按钮。
-6. 打最新内测包。
-7. 准备截图和商店资料。
+1. 继续 Apple Developer Program 组织账号注册，填入 D-U-N-S：`517429052`。
+2. 注册 Google Play Console 组织账号。
+3. 国内安卓市场准备软著、APP 备案和隐私合规材料。
+4. 正式包关闭测试账号按钮。
+5. 打最新内测包。
+6. 准备截图和商店资料。

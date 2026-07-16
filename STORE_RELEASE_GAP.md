@@ -47,7 +47,8 @@
      - 隐私政策：`https://zhangyue0358.github.io/huozheme-/privacy.html`
      - 用户协议：`https://zhangyue0358.github.io/huozheme-/terms.html`
    - 运营主体：北京森贝科技有限公司
-   - 联系邮箱/用户支持邮箱：`senbeikeji@senbeikeji.cn`
+   - 联系邮箱：`zhangyue@senbeikeji.cn`
+   - 用户支持邮箱：`senbeikeji@senbeikeji.cn`
 
 3. 账号注销能力
    - App 内已有“注销账户”入口，二次确认后写入 `account_deletion_requests`。

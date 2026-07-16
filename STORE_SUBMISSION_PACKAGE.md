@@ -12,7 +12,7 @@
 - Android Package：`com.huozhema.app`
 - 开发者主体：北京森贝科技有限公司
 - D-U-N-S Number：`517429052`
-- 联系邮箱：`senbeikeji@senbeikeji.cn`
+- 联系邮箱：`zhangyue@senbeikeji.cn`
 - 用户支持邮箱：`senbeikeji@senbeikeji.cn`
 - 隐私政策：`https://zhangyue0358.github.io/huozheme-/privacy.html`
 - 用户协议：`https://zhangyue0358.github.io/huozheme-/terms.html`
@@ -135,7 +135,7 @@
 
 ### 联系方式
 
-- 联系邮箱：`senbeikeji@senbeikeji.cn`
+- 联系邮箱：`zhangyue@senbeikeji.cn`
 - 隐私政策：`https://zhangyue0358.github.io/huozheme-/privacy.html`
 - 官网：`https://zhangyue0358.github.io/huozheme-/`
 
