@@ -53,9 +53,9 @@
 - 运行 `npm run typecheck`。
 - 运行 `npm run check:release-config`。
 - 运行 `eas build --profile preview --platform ios`。
-- 运行 `eas build --profile preview --platform android`。
+- 运行 `eas build --profile preview --platform android`，国内安卓正式提交前优先准备 APK。
 - iOS 用 TestFlight 或内部安装方式测试。
-- Android 用内部测试轨道或 APK/AAB 安装测试。
+- Android 用 APK 安装测试；国内应用市场提交前再用正式候选 APK 跑完整清单。
 
 ## 4. 商店材料
 
@@ -69,6 +69,8 @@
 - 用户协议网页链接。
 - 支持邮箱或手机号。
 - 年龄分级说明。
+- 国内安卓路线清单见 `CHINA_ANDROID_RELEASE_PLAN.md`。
+- 国内安卓还要准备 APP 备案、软著或 APP 电子版权、企业开发者认证材料。
 
 ## 5. 正式发布前必须补
 
@@ -79,5 +81,6 @@
 - 审核备注说明登录兜底：如果审核环境收不到中国大陆短信，可点击“先看演示模式”体验核心流程。
 - 正式隐私政策和用户协议。
 - 真实运营主体和联系邮箱。
+- 国内安卓首发前补 APP 备案、软著或 APP 电子版权。
 - 崩溃和错误监控方案。
 - 生产数据库备份策略。

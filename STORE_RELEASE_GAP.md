@@ -1,6 +1,6 @@
 # 活着吗上架缺口表
 
-更新日期：2026-07-15
+更新日期：2026-07-18
 
 ## 已基本就绪
 
@@ -22,6 +22,7 @@
 - 截图测试数据脚本已准备并验证：`npm run prepare:screenshots`
 - 公司运营主体、联系邮箱和用户支持邮箱已填写。
 - 公司主体上架材料清单已整理：`COMPANY_STORE_MATERIALS.md`
+- 国内安卓上架路线已整理：`CHINA_ANDROID_RELEASE_PLAN.md`
 - D-U-N-S Number 已获得：`517429052`
 - Apple 个人身份筛查/身份信息审核已通过。
 - Apple Developer Program 组织账号注册已提交，当前审核中。
@@ -37,7 +38,7 @@
 
 1. 审核登录方案
    - 正式手机号登录已接入并能收码。
-   - 风险：App Store / Google Play 审核人员未必能使用中国大陆手机号接收验证码。
+   - 风险：App Store 审核人员、以及部分国内应用市场审核人员未必能使用中国大陆手机号接收验证码。
    - 当前方案：正式登录走手机号验证码；如果审核环境收不到短信，审核员点击登录页底部“先看演示模式”进入核心流程。
    - 开发测试账号入口不能直接出现在正式上架包里。
    - `npm run check:release-config` 已用于检查生产构建 profile 是否关闭测试账号入口。
@@ -101,19 +102,33 @@
    - Apple Developer Program 组织账号注册已提交。
    - 当前状态：等待 Apple 审核组织账号和公司主体信息。
 
+12. 国内安卓上架材料
+   - 当前路线：国内安卓市场优先，Google Play 暂缓。
+   - 重点材料：企业开发者认证、营业执照、经办人/法人信息、隐私政策、用户协议、权限说明、APK、截图、APP 备案、软著或 APP 电子版权。
+   - `CHINA_ANDROID_RELEASE_PLAN.md` 已整理华为、小米、OPPO、vivo、荣耀、应用宝的准备顺序。
+   - 小米官方资质 FAQ 明确要求上架应用提供软著/APP 电子版权/软著认证三选一，并提供 APP 备案；国内其他市场也会围绕 APP 备案、实名资质、隐私合规和安全检测做审核。
+   - 因当前 App 走联网登录、Supabase 数据和阿里云短信，国内路线需要优先准备 APP 备案。
+
 ## 下一步执行顺序
 
 1. 等 Apple Developer Program 组织账号审核结果。
-2. 同步注册 Google Play Console 组织账号。
-3. 如果 Apple/Google 要求公司网站与组织域名强关联，优先把产品官网绑定到公司域名。
-4. 提交后台时复制 `STORE_REVIEW_LOGIN_PLAN.md` 中的审核备注，避免审核员无法接收中国短信。
-5. 正式包关闭测试账号按钮，并运行 `npm run check:release-config`。
-6. 定期查看 `Account deletion cleanup` 的 GitHub Actions 运行状态，确认注销清理任务持续成功。
-7. 按 `ADMIN_OPERATIONS.md` 验证最小后台运营命令。
-8. 用 `STORE_SUBMISSION_PACKAGE.md` 填写 App Store / Google Play 后台资料。
-9. EAS 额度恢复后重新打 Android preview 包。
-10. 用 Android preview 包跑完整 `INTERNAL_TEST_CHECKLIST.md`。
-11. 准备 iOS TestFlight。
+2. 国内安卓先准备 APP 备案、软著或 APP 电子版权、权限说明和企业认证材料。
+3. 优先注册/认证国内安卓开发者账号：华为、小米、OPPO、vivo、荣耀、应用宝。
+4. 如果 Apple 或国内安卓市场要求公司网站与组织域名强关联，优先把产品官网绑定到公司域名，例如 `huozhema.senbeikeji.cn`。
+5. 提交后台时复制 `STORE_REVIEW_LOGIN_PLAN.md` 中的审核备注，避免审核员无法接收中国短信。
+6. 正式包关闭测试账号按钮，并运行 `npm run check:release-config`。
+7. 定期查看 `Account deletion cleanup` 的 GitHub Actions 运行状态，确认注销清理任务持续成功。
+8. 按 `ADMIN_OPERATIONS.md` 验证最小后台运营命令。
+9. 用 `STORE_SUBMISSION_PACKAGE.md` 填写 App Store 和国内安卓市场后台资料。
+10. EAS 额度恢复后重新打 Android preview 包；国内安卓正式提交优先准备 APK。
+11. 用 Android preview/正式候选包跑完整 `INTERNAL_TEST_CHECKLIST.md`。
+12. 准备 iOS TestFlight。
+
+暂缓事项：
+
+- 暂不注册 Google Play Console。
+- 暂不处理海外/港澳台分发资料。
+- 后续明确做海外市场时，再恢复 Google Play Console 组织账号、海外隐私合规和海外短信可达性测试。
 
 ## 打包前命令
 
