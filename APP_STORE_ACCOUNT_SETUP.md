@@ -148,7 +148,7 @@ legal@senbeikeji.cn
 
 ## 下一步
 
-1. 继续 Apple Developer Program 组织账号注册，填入 D-U-N-S：`517429052`。
+1. 等 Apple Developer Program 组织账号审核结果。
 2. 注册 Google Play Console 组织账号。
 3. 国内安卓市场准备软著、APP 备案和隐私合规材料。
 4. 正式包关闭测试账号按钮。

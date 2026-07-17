@@ -31,7 +31,7 @@ D-U-N-S Number：517429052
 
 当前优先事项：
 
-1. 继续完成 Apple Developer 组织账号注册。
+1. 等 Apple Developer Program 组织账号审核结果。
 2. 注册 Google Play Console 组织账号。
 3. 后续把产品官网绑定到公司域名，例如 `huozhema.senbeikeji.cn`。
 
@@ -132,7 +132,7 @@ D-U-N-S Number：517429052
 ## 当前最短路径
 
 1. Apple 身份筛查/身份信息审核已通过。
-2. 继续 Apple Developer Program 组织账号注册，填入 D-U-N-S：`517429052`。
+2. Apple Developer Program 组织账号注册已提交，当前审核中。
 3. 注册 Google Play Console 组织账号，填入同一 D-U-N-S。
 4. 如 Apple/Google 要求公司网站与组织域名强关联，优先把产品官网绑定到公司域名，例如 `huozhema.senbeikeji.cn`。
 5. 确认审核登录方案：正式手机号验证码登录；审核环境无法收中国大陆短信时，使用“先看演示模式”兜底。

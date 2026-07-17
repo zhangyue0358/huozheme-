@@ -23,7 +23,8 @@
 - 公司运营主体、联系邮箱和用户支持邮箱已填写。
 - 公司主体上架材料清单已整理：`COMPANY_STORE_MATERIALS.md`
 - D-U-N-S Number 已获得：`517429052`
-- Apple 个人身份筛查/身份信息审核已通过，可以继续组织账号注册。
+- Apple 个人身份筛查/身份信息审核已通过。
+- Apple Developer Program 组织账号注册已提交，当前审核中。
 - App 内已增加二次确认注销入口，提交后立即退出登录，并将昵称、手机号、好友关系等个人信息去标识化。
 - GitHub Actions 账号注销清理任务已配置 Secrets，并已手动运行成功。
 - 手机号加好友已改为后端 RPC，增加频率限制，并收紧 `profiles` 读取范围。
@@ -94,15 +95,16 @@
    - 产品官网已准备：`https://zhangyue0358.github.io/huozheme-/`
    - 后续建议绑定公司域名，例如 `huozhema.senbeikeji.cn`。
 
-11. Apple 身份审核
+11. Apple Developer 组织账号审核
    - Apple Developer 注册因姓名触发合规筛查，已按邮件要求提交身份信息。
    - 身份审核已通过。
-   - 当前下一步：继续 Apple Developer Program 组织账号注册，填写公司主体、D-U-N-S 和公司联系方式。
+   - Apple Developer Program 组织账号注册已提交。
+   - 当前状态：等待 Apple 审核组织账号和公司主体信息。
 
 ## 下一步执行顺序
 
-1. 继续 Apple Developer Program 组织账号注册。
-2. 注册 Google Play Console 组织账号。
+1. 等 Apple Developer Program 组织账号审核结果。
+2. 同步注册 Google Play Console 组织账号。
 3. 如果 Apple/Google 要求公司网站与组织域名强关联，优先把产品官网绑定到公司域名。
 4. 提交后台时复制 `STORE_REVIEW_LOGIN_PLAN.md` 中的审核备注，避免审核员无法接收中国短信。
 5. 正式包关闭测试账号按钮，并运行 `npm run check:release-config`。
