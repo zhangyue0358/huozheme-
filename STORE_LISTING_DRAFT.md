@@ -113,8 +113,8 @@
 
 ## 上架前仍缺
 
-- 隐私政策网页 URL：`https://zhangyue0358.github.io/huozheme-/privacy.html`
-- 用户协议网页 URL：`https://zhangyue0358.github.io/huozheme-/terms.html`
+- 隐私政策网页 URL：`https://huozhema.senbeikeji.cn/privacy.html`
+- 用户协议网页 URL：`https://huozhema.senbeikeji.cn/terms.html`
 - 后台定时清理任务：已配置 GitHub Actions 定时任务，并已手动运行验证成功。
 - 审核登录备注：提交后台时复制 `STORE_REVIEW_LOGIN_PLAN.md` 中的备注文案。
 - Android 最终权限核对：当前 Expo public config 仅声明相册读取权限；最终 APK/AAB 仍需再核对一次 Manifest。

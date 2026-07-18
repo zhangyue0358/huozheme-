@@ -51,7 +51,7 @@ type SaveState = 'idle' | 'saving' | 'saved';
 
 const DEFAULT_POKE_NOTICE = '还没戳好友。';
 const SMS_RESEND_SECONDS = 60;
-const APP_SHARE_URL = 'https://zhangyue0358.github.io/huozheme-/';
+const APP_SHARE_URL = process.env.EXPO_PUBLIC_APP_SHARE_URL?.trim() || 'https://huozhema.senbeikeji.cn/';
 
 const notes = [
   '😊 开心，难得有点亮，就先好好接住。',

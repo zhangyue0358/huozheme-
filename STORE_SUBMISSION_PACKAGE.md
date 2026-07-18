@@ -16,9 +16,9 @@
 - D-U-N-S Number：`517429052`
 - 联系邮箱：`zhangyue@senbeikeji.cn`
 - 用户支持邮箱：`senbeikeji@senbeikeji.cn`
-- 隐私政策：`https://zhangyue0358.github.io/huozheme-/privacy.html`
-- 用户协议：`https://zhangyue0358.github.io/huozheme-/terms.html`
-- 产品官网：`https://zhangyue0358.github.io/huozheme-/`
+- 隐私政策：`https://huozhema.senbeikeji.cn/privacy.html`
+- 用户协议：`https://huozhema.senbeikeji.cn/terms.html`
+- 产品官网：`https://huozhema.senbeikeji.cn/`
 - 审核登录方案：见 `STORE_REVIEW_LOGIN_PLAN.md`
 
 ## 截图素材
@@ -85,9 +85,9 @@
 
 ### 支持与隐私
 
-- 支持 URL：`https://zhangyue0358.github.io/huozheme-/`
-- 营销 URL：`https://zhangyue0358.github.io/huozheme-/`
-- 隐私政策 URL：`https://zhangyue0358.github.io/huozheme-/privacy.html`
+- 支持 URL：`https://huozhema.senbeikeji.cn/`
+- 营销 URL：`https://huozhema.senbeikeji.cn/`
+- 隐私政策 URL：`https://huozhema.senbeikeji.cn/privacy.html`
 
 ### App 审核备注
 
@@ -149,8 +149,8 @@
 - 联系邮箱：`zhangyue@senbeikeji.cn`
 - 用户支持邮箱：`senbeikeji@senbeikeji.cn`
 - 联系电话：`18810409001`
-- 隐私政策：`https://zhangyue0358.github.io/huozheme-/privacy.html`
-- 官网：`https://zhangyue0358.github.io/huozheme-/`
+- 隐私政策：`https://huozhema.senbeikeji.cn/privacy.html`
+- 官网：`https://huozhema.senbeikeji.cn/`
 
 ### 国内安卓通用材料
 
@@ -165,9 +165,9 @@
 - 是否联网：是
 - 登录方式：手机号验证码登录
 - 权限说明：仅用户主动添加随笔照片时访问相册，不使用通讯录、定位、麦克风、相机
-- 隐私政策 URL：`https://zhangyue0358.github.io/huozheme-/privacy.html`
-- 用户协议 URL：`https://zhangyue0358.github.io/huozheme-/terms.html`
-- 产品官网 URL：`https://zhangyue0358.github.io/huozheme-/`
+- 隐私政策 URL：`https://huozhema.senbeikeji.cn/privacy.html`
+- 用户协议 URL：`https://huozhema.senbeikeji.cn/terms.html`
+- 产品官网 URL：`https://huozhema.senbeikeji.cn/`
 - 截图目录：`store-assets/screenshots/android/`
 - 包体：国内安卓优先准备 APK
 

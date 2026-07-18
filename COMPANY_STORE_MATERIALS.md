@@ -9,9 +9,9 @@
 运营主体：北京森贝科技有限公司
 企业邮箱：zhangyue@senbeikeji.cn
 国家/地区：中国
-隐私政策 URL：https://zhangyue0358.github.io/huozheme-/privacy.html
-用户协议 URL：https://zhangyue0358.github.io/huozheme-/terms.html
-产品官网 URL：https://zhangyue0358.github.io/huozheme-/
+隐私政策 URL：https://huozhema.senbeikeji.cn/privacy.html
+用户协议 URL：https://huozhema.senbeikeji.cn/terms.html
+产品官网 URL：https://huozhema.senbeikeji.cn/
 D-U-N-S Number：517429052
 Android package：com.huozhema.app
 iOS bundle id：com.huozhema.app
@@ -25,7 +25,7 @@ iOS bundle id：com.huozhema.app
 ## 已补齐的关键材料
 
 ```text
-公司官网或产品官网：https://zhangyue0358.github.io/huozheme-/
+公司官网或产品官网：https://huozhema.senbeikeji.cn/
 D-U-N-S Number：517429052
 ```
 
@@ -33,7 +33,7 @@ D-U-N-S Number：517429052
 
 1. 等 Apple Developer Program 组织账号审核结果。
 2. 先走国内安卓路线，准备 APP 备案、软著或 APP 电子版权、国内安卓开发者账号企业认证。
-3. 后续把产品官网绑定到公司域名，例如 `huozhema.senbeikeji.cn`。
+3. 把产品官网部署到公司域名 `huozhema.senbeikeji.cn`，部署步骤见 `PRODUCT_SITE_DEPLOYMENT.md`。
 4. Google Play 暂缓，等明确要做海外市场时再注册。
 
 ## Apple Developer 组织账号
@@ -46,7 +46,7 @@ D-U-N-S Number：517429052
 - 公司电话：18810409001
 - 有权代表公司签署协议的人：张越
 - D-U-N-S Number：517429052
-- 公司官网/产品官网：https://zhangyue0358.github.io/huozheme-/
+- 公司官网/产品官网：https://huozhema.senbeikeji.cn/
 - Apple Account，并开启双重认证
 - Apple Developer Program 年费
 
@@ -126,7 +126,7 @@ D-U-N-S Number：517429052
 - 组织名称：北京森贝科技有限公司
 - 组织地址：北京市海淀区西北旺东路10号院东区15号楼-1层01
 - 组织电话：18810409001
-- 组织网站：https://zhangyue0358.github.io/huozheme-/
+- 组织网站：https://huozhema.senbeikeji.cn/
 - 联系人姓名：张越
 - 联系邮箱：zhangyue@senbeikeji.cn
 - 联系电话：18810409001

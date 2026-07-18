@@ -45,9 +45,9 @@ APP 应用 / 软件著作权或网站备案相关
 可提供材料：
 
 - 公司主体：北京森贝科技有限公司
-- 产品官网：https://zhangyue0358.github.io/huozheme-/
-- 隐私政策：https://zhangyue0358.github.io/huozheme-/privacy.html
-- 用户协议：https://zhangyue0358.github.io/huozheme-/terms.html
+- 产品官网：https://huozhema.senbeikeji.cn/
+- 隐私政策：https://huozhema.senbeikeji.cn/privacy.html
+- 用户协议：https://huozhema.senbeikeji.cn/terms.html
 - App 截图：`store-assets/screenshots/iphone/`
 
 ### 3. 申请短信模板

@@ -45,9 +45,10 @@
 
 2. 隐私政策和用户协议网页
    - `privacy.html` 和 `terms.html` 已生成。
-   - GitHub Pages 已开启，公开 URL：
-     - 隐私政策：`https://zhangyue0358.github.io/huozheme-/privacy.html`
-     - 用户协议：`https://zhangyue0358.github.io/huozheme-/terms.html`
+   - 目标公司域名 URL：
+     - 隐私政策：`https://huozhema.senbeikeji.cn/privacy.html`
+     - 用户协议：`https://huozhema.senbeikeji.cn/terms.html`
+   - 当前还需要按 `PRODUCT_SITE_DEPLOYMENT.md` 部署官网、配置 HTTPS，并完成微信内置浏览器访问验证。
    - 运营主体：北京森贝科技有限公司
    - 联系邮箱：`zhangyue@senbeikeji.cn`
    - 用户支持邮箱：`senbeikeji@senbeikeji.cn`
@@ -93,8 +94,8 @@
 10. 公司账号材料
    - 统一社会信用代码、注册地址、公司电话、联系人已补齐。
    - D-U-N-S Number 已获得：`517429052`。
-   - 产品官网已准备：`https://zhangyue0358.github.io/huozheme-/`
-   - 后续建议绑定公司域名，例如 `huozhema.senbeikeji.cn`。
+   - 产品官网文件已准备，目标域名：`https://huozhema.senbeikeji.cn/`
+   - 下一步需要部署公司域名官网，并验证隐私政策、用户协议和微信分享链接可访问。
 
 11. Apple Developer 组织账号审核
    - Apple Developer 注册因姓名触发合规筛查，已按邮件要求提交身份信息。
@@ -114,7 +115,7 @@
 1. 等 Apple Developer Program 组织账号审核结果。
 2. 国内安卓先准备 APP 备案、软著或 APP 电子版权、权限说明和企业认证材料。
 3. 优先注册/认证国内安卓开发者账号：华为、小米、OPPO、vivo、荣耀、应用宝。
-4. 如果 Apple 或国内安卓市场要求公司网站与组织域名强关联，优先把产品官网绑定到公司域名，例如 `huozhema.senbeikeji.cn`。
+4. 按 `PRODUCT_SITE_DEPLOYMENT.md` 把产品官网部署到 `huozhema.senbeikeji.cn`。
 5. 提交后台时复制 `STORE_REVIEW_LOGIN_PLAN.md` 中的审核备注，避免审核员无法接收中国短信。
 6. 正式包关闭测试账号按钮，并运行 `npm run check:release-config`。
 7. 定期查看 `Account deletion cleanup` 的 GitHub Actions 运行状态，确认注销清理任务持续成功。

@@ -50,7 +50,7 @@
 可以记录心情、随笔、照片和今天最想做的三件事，也可以和好友轻轻戳一下，确认彼此还在。
 
 你也来试试：
-https://zhangyue0358.github.io/huozheme-/
+https://huozhema.senbeikeji.cn/
 ```
 
 默认分享今日摘要：
@@ -66,7 +66,7 @@ https://zhangyue0358.github.io/huozheme-/
 送给自己：...
 
 你也来给今天留一个小小的信号。
-https://zhangyue0358.github.io/huozheme-/
+https://huozhema.senbeikeji.cn/
 ```
 
 暂不默认分享：

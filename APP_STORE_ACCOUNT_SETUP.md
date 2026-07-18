@@ -124,7 +124,7 @@
 联系手机号：18810409001
 公司注册地址：北京市海淀区西北旺东路10号院东区15号楼-1层01
 统一社会信用代码：91110108MAET83N58J
-公司官网：https://zhangyue0358.github.io/huozheme-/
+公司官网：https://huozhema.senbeikeji.cn/
 D-U-N-S Number：517429052
 上架联系人姓名：张越
 上架联系人手机号：18810409001

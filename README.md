@@ -33,6 +33,7 @@ npm run android
 真机功能验收看 `TESTING_GUIDE.md`。
 当前 Android 内测候选版状态看 `BETA_TEST_NOTES.md`。
 后期商业化思路看 `BUSINESS_MODEL_NOTES.md`，当前阶段先不急着实现付费功能。
+产品官网目标域名是 `https://huozhema.senbeikeji.cn/`，部署和备案步骤看 `PRODUCT_SITE_DEPLOYMENT.md`。
 
 ## 接 Supabase
 

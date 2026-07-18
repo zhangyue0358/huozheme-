@@ -38,9 +38,9 @@
 - 联系人手机号：`18810409001`
 - 联系邮箱：`zhangyue@senbeikeji.cn`
 - 用户支持邮箱：`senbeikeji@senbeikeji.cn`
-- 产品官网：`https://zhangyue0358.github.io/huozheme-/`
-- 隐私政策：`https://zhangyue0358.github.io/huozheme-/privacy.html`
-- 用户协议：`https://zhangyue0358.github.io/huozheme-/terms.html`
+- 产品官网：`https://huozhema.senbeikeji.cn/`
+- 隐私政策：`https://huozhema.senbeikeji.cn/privacy.html`
+- 用户协议：`https://huozhema.senbeikeji.cn/terms.html`
 - Android package：`com.huozhema.app`
 - 截图目录：`store-assets/screenshots/android/`
 - 审核备注：见 `STORE_REVIEW_LOGIN_PLAN.md`
