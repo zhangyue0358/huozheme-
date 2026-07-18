@@ -13,6 +13,7 @@ import {
   Pressable,
   SafeAreaView,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -50,6 +51,7 @@ type SaveState = 'idle' | 'saving' | 'saved';
 
 const DEFAULT_POKE_NOTICE = '还没戳好友。';
 const SMS_RESEND_SECONDS = 60;
+const APP_SHARE_URL = 'https://zhangyue0358.github.io/huozheme-/';
 
 const notes = [
   '😊 开心，难得有点亮，就先好好接住。',
@@ -156,6 +158,48 @@ function buildDiaryText({
     `送给自己的一句话：${quote}`,
     `完成的三件事：\n${doneText}`,
   ].join('\n\n');
+}
+
+function buildTodayShareText({
+  aliveDays,
+  doneCount,
+  quoteText,
+  statusText,
+  streak,
+  weatherText,
+}: {
+  aliveDays: number;
+  doneCount: number;
+  quoteText: string;
+  statusText: string;
+  streak: number;
+  weatherText: string;
+}) {
+  const quote = quoteText.trim() ? `\n送给自己：${quoteText.trim()}` : '';
+
+  return [
+    '我刚刚在「活着吗」确认了一下：还活着，挺好。',
+    '',
+    `今天心情：${statusText}`,
+    `今天天气：${weatherText}`,
+    `累计存活：${aliveDays} 天`,
+    `连续存活：${streak} 天`,
+    `今天想做：${doneCount} 件${quote}`,
+    '',
+    '你也来给今天留一个小小的信号。',
+    APP_SHARE_URL,
+  ].join('\n');
+}
+
+function buildInviteShareText() {
+  return [
+    '我在用「活着吗」给每天留一个很小的信号：我还活着。',
+    '',
+    '可以记录心情、随笔、照片和今天最想做的三件事，也可以和好友轻轻戳一下，确认彼此还在。',
+    '',
+    '你也来试试：',
+    APP_SHARE_URL,
+  ].join('\n');
 }
 
 function localDateIso(date = new Date()) {
@@ -749,6 +793,45 @@ export default function App() {
     setTodayDiaryOpen(true);
   }
 
+  async function handleShareToday() {
+    if (!requireCheckin()) return;
+
+    try {
+      const result = await Share.share({
+        title: '活着吗',
+        message: buildTodayShareText({
+          aliveDays,
+          doneCount,
+          quoteText: savedTodayQuoteText,
+          statusText,
+          streak,
+          weatherText,
+        }),
+      });
+
+      if (result.action !== Share.dismissedAction) {
+        showAppToast('可以选择微信好友或朋友圈分享。');
+      }
+    } catch (error) {
+      Alert.alert('分享失败', error instanceof Error ? error.message : '请稍后再试');
+    }
+  }
+
+  async function handleShareInvite() {
+    try {
+      const result = await Share.share({
+        title: '活着吗',
+        message: buildInviteShareText(),
+      });
+
+      if (result.action !== Share.dismissedAction) {
+        showAppToast('可以选择微信好友或朋友圈分享。');
+      }
+    } catch (error) {
+      Alert.alert('分享失败', error instanceof Error ? error.message : '请稍后再试');
+    }
+  }
+
   const savedTodayQuoteText =
     savedQuoteText.trim() || (checkedIn && quoteText.trim() && quoteText.trim() !== demoSnapshot.quoteText ? quoteText : '');
 
@@ -1080,6 +1163,7 @@ export default function App() {
               onRemoveJournalPhoto={removeJournalPhoto}
               onSaveJournal={saveJournal}
               onSaveQuote={saveQuote}
+              onShareToday={handleShareToday}
               onShuffleQuote={shuffleQuote}
               onSelectWeather={updateWeatherText}
               onToggleWeatherPicker={toggleWeatherPicker}
@@ -1113,6 +1197,7 @@ export default function App() {
               onPokeFriend={handlePokeFriend}
               onReplyPoke={handleReplyPoke}
               onSendRequest={handleSendFriendRequest}
+              onShareInvite={handleShareInvite}
               pokedFriendIds={pokedFriendIds}
               pokeNotice={pokeNotice}
               repliedFriendIds={repliedFriendIds}
@@ -1200,9 +1285,14 @@ export default function App() {
               <ScrollView style={styles.todayDiaryScroll} showsVerticalScrollIndicator={false}>
                 <Text style={styles.todayDiaryText}>{todayDiaryText}</Text>
               </ScrollView>
-              <Pressable style={styles.todayDiaryClose} onPress={() => setTodayDiaryOpen(false)}>
-                <Text style={styles.quickRecordSaveText}>关闭</Text>
-              </Pressable>
+              <View style={styles.todayDiaryActions}>
+                <Pressable style={styles.todayDiaryGhost} onPress={() => setTodayDiaryOpen(false)}>
+                  <Text style={styles.todayDiaryGhostText}>关闭</Text>
+                </Pressable>
+                <Pressable style={styles.todayDiaryClose} onPress={handleShareToday}>
+                  <Text style={styles.quickRecordSaveText}>分享</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         </Modal>
@@ -1442,6 +1532,7 @@ function TodayScreen({
   onRemoveJournalPhoto,
   onSaveJournal,
   onSaveQuote,
+  onShareToday,
   onShuffleQuote,
   onSelectWeather,
   onToggleWeatherPicker,
@@ -1476,6 +1567,7 @@ function TodayScreen({
   onRemoveJournalPhoto: (index: number) => void;
   onSaveJournal: () => void;
   onSaveQuote: () => void;
+  onShareToday: () => void;
   onShuffleQuote: () => void;
   onSelectWeather: (weatherText: string) => void;
   onToggleWeatherPicker: () => void;
@@ -1736,9 +1828,14 @@ function TodayScreen({
         ))}
       </View>
 
-      <Pressable style={styles.diaryButton} onPress={onOpenDiary}>
-        <Text style={styles.diaryButtonText}>看看今天的我</Text>
-      </Pressable>
+      <View style={styles.todayActionRow}>
+        <Pressable style={[styles.diaryButton, styles.todayActionButton]} onPress={onOpenDiary}>
+          <Text style={styles.diaryButtonText}>看看今天的我</Text>
+        </Pressable>
+        <Pressable style={[styles.shareButton, styles.todayActionButton]} onPress={onShareToday}>
+          <Text style={styles.shareButtonText}>分享给微信好友/朋友圈</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -1754,6 +1851,7 @@ function FriendsScreen({
   onPokeFriend,
   onReplyPoke,
   onSendRequest,
+  onShareInvite,
   pokedFriendIds,
   pokeNotice,
   repliedFriendIds,
@@ -1768,6 +1866,7 @@ function FriendsScreen({
   onPokeFriend: (friend: Friend) => void;
   onReplyPoke: (poke: IncomingPoke) => void;
   onSendRequest: (phone: string) => void;
+  onShareInvite: () => void;
   pokedFriendIds: Set<string>;
   pokeNotice: string;
   repliedFriendIds: Set<string>;
@@ -1819,6 +1918,14 @@ function FriendsScreen({
           <Text style={styles.smallButtonText}>添加</Text>
         </Pressable>
       </View>
+
+      <Pressable style={styles.inviteShareCard} onPress={onShareInvite}>
+        <View>
+          <Text style={styles.inviteShareTitle}>分享给微信好友/朋友圈</Text>
+          <Text style={styles.inviteShareMeta}>发一句邀请，让朋友也来确认今天。</Text>
+        </View>
+        <Text style={styles.inviteShareArrow}>›</Text>
+      </Pressable>
 
       {incomingRequests.length > 0 && (
         <View style={styles.requestNotice}>
@@ -3183,6 +3290,31 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
   },
+  todayActionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  todayActionButton: {
+    flex: 1,
+    marginTop: 0,
+  },
+  shareButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(155,226,124,0.12)',
+    borderColor: 'rgba(155,226,124,0.32)',
+    borderRadius: 14,
+    borderWidth: 1,
+    minHeight: 40,
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  shareButtonText: {
+    color: colors.green,
+    fontSize: 12,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
   todoRow: {
     alignItems: 'center',
     backgroundColor: colors.panel2,
@@ -3288,6 +3420,33 @@ const styles = StyleSheet.create({
   smallButtonText: {
     color: '#10120f',
     fontWeight: '800',
+  },
+  inviteShareCard: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(155,226,124,0.1)',
+    borderColor: 'rgba(155,226,124,0.24)',
+    borderRadius: 20,
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: 64,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  inviteShareTitle: {
+    color: colors.green,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  inviteShareMeta: {
+    color: colors.muted,
+    fontSize: 12,
+    marginTop: 4,
+  },
+  inviteShareArrow: {
+    color: colors.green,
+    fontSize: 24,
+    fontWeight: '900',
   },
   summaryCard: {
     alignItems: 'flex-end',
@@ -4162,13 +4321,32 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     textAlign: 'left',
   },
+  todayDiaryActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
   todayDiaryClose: {
     alignItems: 'center',
     backgroundColor: colors.green,
     borderRadius: 16,
+    flex: 1,
     height: 46,
     justifyContent: 'center',
-    marginTop: 12,
+  },
+  todayDiaryGhost: {
+    alignItems: 'center',
+    borderColor: colors.line,
+    borderRadius: 16,
+    borderWidth: 1,
+    flex: 1,
+    height: 46,
+    justifyContent: 'center',
+  },
+  todayDiaryGhostText: {
+    color: colors.muted,
+    fontSize: 14,
+    fontWeight: '800',
   },
   weatherPickerPanel: {
     backgroundColor: colors.panel,
