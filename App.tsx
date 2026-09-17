@@ -1,5 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -7,6 +8,7 @@ import {
   Animated,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   PanResponder,
   Platform,
@@ -19,39 +21,87 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import type { Session } from '@supabase/supabase-js';
-
 import {
-  acceptFriendRequest,
-  createTodo,
-  deleteFriendship,
-  deleteJournalPhoto,
-  deleteOwnAppData,
-  ensureProfile,
-  loadAppSnapshot,
-  requestAccountDeletion,
-  saveCheckin,
-  sendFriendRequest,
-  pokeFriend,
-  replyAliveToPoke,
-  uploadJournalPhoto,
-  updatePrivacySetting,
-  updateProfile,
-  updateTodoImportant,
-  updateTodoDone,
-} from './src/lib/appApi';
-import { sendPhoneLoginCode, signInWithPassword, signOut, verifyPhoneLoginCode } from './src/lib/authApi';
+  acknowledgeDomesticAliveReply,
+  acceptDomesticFriendRequest,
+  confirmDomesticCheckin,
+  createDomesticTodo,
+  deleteDomesticFriendship,
+  deleteDomesticJournalPhoto,
+  loadDomesticAppSnapshot,
+  pokeDomesticFriend,
+  replyDomesticAliveToPoke,
+  requestDomesticAccountDeletion,
+  saveDomesticCheckin,
+  saveDomesticQuote,
+  saveDomesticPersonalMessages,
+  sendDomesticFriendRequest,
+  updateDomesticPrivacySetting,
+  updateDomesticProfile,
+  updateDomesticTodoDone,
+  updateDomesticTodoImportant,
+  uploadDomesticJournalPhoto,
+  uploadDomesticProfileAvatar,
+} from './src/lib/domesticAppApi';
+import {
+  resetDomesticPasswordWithCode,
+  sendDomesticPhoneLoginCode,
+  signInDomesticWithPassword,
+  signOutDomestic,
+} from './src/lib/domesticAuthApi';
+import {
+  getDomesticPolicyConsent,
+  getDomesticSession,
+  getDomesticRememberMode,
+  hasDomesticApiConfig,
+  saveDomesticSession,
+  setDomesticPolicyConsent,
+  type DomesticSession,
+} from './src/lib/domesticClient';
 import { demoSnapshot } from './src/lib/mockData';
-import { hasSupabaseConfig, supabase } from './src/lib/supabase';
-import type { AppSnapshot, DiaryEntry, Friend, FriendRequest, IncomingPoke, Profile, Todo } from './src/lib/types';
+import { disableDailyReminder, getReminderSettings, scheduleDailyReminder } from './src/lib/reminderNotifications';
+import type { AppSnapshot, DiaryEntry, Friend, FriendRequest, IncomingPoke, PersonalMessage, Profile, Todo } from './src/lib/types';
 
 type TabKey = 'today' | 'friends' | 'todos' | 'profile';
 type TabIconKey = TabKey;
 type SaveState = 'idle' | 'saving' | 'saved';
 
-const DEFAULT_POKE_NOTICE = '还没戳好友。';
 const SMS_RESEND_SECONDS = 60;
 const APP_SHARE_URL = process.env.EXPO_PUBLIC_APP_SHARE_URL?.trim() || 'https://huozhema.senbeikeji.cn/';
+const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL?.trim() || 'https://huozhema.senbeikeji.cn/privacy.html';
+const TERMS_OF_SERVICE_URL = process.env.EXPO_PUBLIC_TERMS_OF_SERVICE_URL?.trim() || 'https://huozhema.senbeikeji.cn/terms.html';
+const REGISTRATION_AGREEMENT_URL = process.env.EXPO_PUBLIC_REGISTRATION_AGREEMENT_URL?.trim() || 'https://huozhema.senbeikeji.cn/registration.html';
+const TRUSTEE_SERVICE_EMAIL = process.env.EXPO_PUBLIC_TRUSTEE_SERVICE_EMAIL?.trim() || 'anxintuofu@senbeikeji.cn';
+
+async function openExternalUrl(url: string, label: string) {
+  try {
+    await Linking.openURL(url);
+  } catch {
+    Alert.alert(`无法打开${label}`, '请检查网络后再试。');
+  }
+}
+
+async function openTrusteeServiceEmail() {
+  const subject = encodeURIComponent('安心托付服务委托');
+  const body = encodeURIComponent(
+    [
+      '您好，我想申请“安心托付”服务。',
+      '',
+      '所在城市：',
+      '联系方式：',
+      '希望委托的内容：',
+      '如不便文字说明，希望通过视频说明：是 / 否',
+      '',
+      '请勿在邮件中填写账户密码、验证码、支付密码、设备解锁密码、私钥、助记词，或直接附上身份证、人脸视频等敏感材料。工作人员回访后会告知必要性和安全提交方式。',
+    ].join('\n'),
+  );
+
+  try {
+    await Linking.openURL(`mailto:${TRUSTEE_SERVICE_EMAIL}?subject=${subject}&body=${body}`);
+  } catch {
+    Alert.alert('无法打开邮箱应用', `请在常用邮箱中手动联系：\n${TRUSTEE_SERVICE_EMAIL}`);
+  }
+}
 
 const notes = [
   '😊 开心，难得有点亮，就先好好接住。',
@@ -69,39 +119,50 @@ const quotePool = [
   '先把自己放回呼吸里，其他事稍后再说。',
   '你已经穿过很多天，今天也可以慢慢穿过去。',
   '不必证明值得存在，存在本身就已经成立。',
+  '允许自己慢一点，生活不是一场赶路比赛。',
+  '先照顾好此刻的自己，答案会在路上出现。',
+  '今天完成一点点，也值得认真为自己高兴。',
+  '累了就停一停，休息不是退后。',
+  '有些事情暂时没有答案，也不妨碍你继续生活。',
+  '把心放松一点，今天不需要事事圆满。',
+  '你可以一边不确定，一边勇敢地往前走。',
+  '平凡的一天，也值得被好好记住。',
+  '别急着责怪自己，你已经在尽力适应生活。',
+  '今天的风会过去，你也会走到新的地方。',
+  '把能做的做好，剩下的交给时间。',
+  '世界偶尔很吵，记得听一听自己的声音。',
+  '不用和别人一样，你有自己的季节。',
+  '现在的你，也值得被温柔对待。',
+  '给今天留一点空白，也给自己留一点余地。',
+  '一次小小的坚持，也是在认真选择生活。',
+  '不开心的时候，不必勉强自己看起来很好。',
+  '把脚步放稳，慢慢来同样可以抵达。',
+  '你不需要解决所有事情，先过好这一刻。',
+  '今天也许普通，但你依然是独一无二的存在。',
+  '愿你在忙碌里，也没有忘记照顾自己的感受。',
+  '可以期待明天，也别忘了拥抱今天。',
+  '哪怕只是好好吃饭、好好睡觉，也是在爱自己。',
+  '生活有轻有重，你可以选择先放下最沉的那一件。',
+  '你走过的每一步，都算数。',
+  '愿今天结束时，你能对自己说一声辛苦了。',
 ];
 
-const todoNotes = [
-  '不是效率工具。只是帮你把今天从一团雾里捞出来一点点。',
-  '三件事就够了，今天不用把人生全修好。',
-  '能完成一件也算数，价值不是靠忙出来的。',
-  '把今天收得小一点，人会轻一点。',
-  '写下来，不是催自己，是给今天一点形状。',
+const dailyEncouragements = [
+  '今天迈出的一小步，也在把你带向更想去的地方。',
+  '不用一次做到完美，开始本身就很有力量。',
+  '把今天能做的做好，时间会替你积累答案。',
+  '你认真生活的每一天，都在悄悄成为底气。',
+  '慢一点没关系，只要还在朝自己的方向走。',
+  '先完成眼前的一件事，今天就会多一点光。',
+  '你的努力不必轰轰烈烈，坚持就已经很了不起。',
+  '允许今天有难度，也相信自己能把它走过去。',
+  '每一次重新出发，都比停在原地更接近答案。',
+  '照顾好自己，也是今天很重要的一件事。',
+  '别低估微小的行动，它们会慢慢改变生活。',
+  '今天值得期待，你也值得被自己的努力照亮。',
 ];
 
 const weatherOptions = ['☀️ 晴', '🌤️ 多云', '🌧️ 雨', '⛈️ 雷', '🌙 夜'];
-
-const devTestAccounts = [
-  { email: 'test-a@huozhema.local', label: '测试账号 A', phone: '+8613900000001' },
-  { email: 'test-b@huozhema.local', label: '测试账号 B', phone: '+8613900000002' },
-  { email: 'test-delete@huozhema.local', label: '注销测试账号', phone: '' },
-];
-const allowDevTestAccounts = __DEV__ || process.env.EXPO_PUBLIC_ENABLE_TEST_ACCOUNTS === 'true';
-const devTestPassword = allowDevTestAccounts ? (process.env.EXPO_PUBLIC_DEV_TEST_PASSWORD ?? '').trim() : '';
-const showDevTestAccounts = allowDevTestAccounts && devTestPassword.length > 0;
-
-function formatFriendNames(friends: Friend[]) {
-  if (friends.length === 0) return '';
-  if (friends.length === 1) return friends[0].name;
-  if (friends.length === 2) return `${friends[0].name}、${friends[1].name}`;
-  return `${friends[0].name}、${friends[1].name}等 ${friends.length} 位好友`;
-}
-
-function fallbackPhoneForSession(session: Session | null) {
-  const sessionEmail = session?.user.email?.toLowerCase();
-  const devPhone = devTestAccounts.find((account) => account.email === sessionEmail)?.phone ?? null;
-  return session?.user.phone || devPhone || '';
-}
 
 function isLocalPhotoUrl(url: string) {
   return url.startsWith('file:') || url.startsWith('ph:') || url.startsWith('assets-library:');
@@ -150,7 +211,7 @@ function buildDiaryText({
   const quote = quoteText.trim() || '今天还没有保存给自己的话。';
 
   return [
-    `累计存活：${aliveDays} 天`,
+    `累计存在：${aliveDays} 天`,
     `今天天气：${weatherText}`,
     `今天心情：${statusText}`,
     `随笔小记：${journal}`,
@@ -178,12 +239,12 @@ function buildTodayShareText({
   const quote = quoteText.trim() ? `\n送给自己：${quoteText.trim()}` : '';
 
   return [
-    '我刚刚在「活着吗」确认了一下：还活着，挺好。',
+    '我刚刚在「在否」确认了一下：我还在，挺好。',
     '',
     `今天心情：${statusText}`,
     `今天天气：${weatherText}`,
-    `累计存活：${aliveDays} 天`,
-    `连续存活：${streak} 天`,
+    `累计存在：${aliveDays} 天`,
+    `连续存在：${streak} 天`,
     `今天想做：${doneCount} 件${quote}`,
     '',
     '你也来给今天留一个小小的信号。',
@@ -193,7 +254,7 @@ function buildTodayShareText({
 
 function buildInviteShareText() {
   return [
-    '我在用「活着吗」给每天留一个很小的信号：我还活着。',
+    '我在用「在否」给每天留一个很小的信号：我还在。',
     '',
     '可以记录心情、随笔、照片和今天最想做的三件事，也可以和好友轻轻戳一下，确认彼此还在。',
     '',
@@ -207,8 +268,10 @@ function localDateIso(date = new Date()) {
   return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 10);
 }
 
-function isAuthSessionMissingError(error: unknown) {
-  return error instanceof Error && (error.name === 'AuthSessionMissingError' || error.message.toLowerCase().includes('session missing'));
+function encouragementForDate(dateIso: string) {
+  const [year, month, day] = dateIso.split('-').map(Number);
+  const dayNumber = Math.floor(Date.UTC(year, month - 1, day) / 86400000);
+  return dailyEncouragements[dayNumber % dailyEncouragements.length];
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message = '网络请求超时，请检查网络后再试') {
@@ -223,16 +286,17 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message = '网�
 export default function App() {
   const [tab, setTab] = useState<TabKey>('today');
   const [snapshot, setSnapshot] = useState<AppSnapshot>(demoSnapshot);
+  const [pendingMood, setPendingMood] = useState({ date: localDateIso(), value: '' });
+  const [pendingWeather, setPendingWeather] = useState({ date: localDateIso(), value: '' });
   const [draft, setDraft] = useState('');
   const [importantDraft, setImportantDraft] = useState(false);
-  const [pokeNotice, setPokeNotice] = useState(DEFAULT_POKE_NOTICE);
   const [journalDraft, setJournalDraft] = useState(demoSnapshot.journalText);
   const [quoteDraft, setQuoteDraft] = useState(demoSnapshot.quoteText);
-  const [demoMode, setDemoMode] = useState(!hasSupabaseConfig);
+  const [demoMode, setDemoMode] = useState(!hasDomesticApiConfig);
   const [journalSaveState, setJournalSaveState] = useState<SaveState>('idle');
+  const [journalEditing, setJournalEditing] = useState(false);
   const [quoteSaveState, setQuoteSaveState] = useState<SaveState>('idle');
   const [savedJournalText, setSavedJournalText] = useState(demoSnapshot.journalText);
-  const [savedQuoteText, setSavedQuoteText] = useState('');
   const [dismissedPokeIds, setDismissedPokeIds] = useState<Set<string>>(new Set());
   const [dismissedReplyIds, setDismissedReplyIds] = useState<Set<string>>(new Set());
   const [optimisticPokedFriendIds, setOptimisticPokedFriendIds] = useState<Set<string>>(new Set());
@@ -240,22 +304,26 @@ export default function App() {
   const [quickRecordOpen, setQuickRecordOpen] = useState(false);
   const [todayDiaryOpen, setTodayDiaryOpen] = useState(false);
   const [weatherPickerOpen, setWeatherPickerOpen] = useState(false);
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<DomesticSession | null>(null);
+  const [sessionRestoring, setSessionRestoring] = useState(hasDomesticApiConfig);
   const [signingOut, setSigningOut] = useState(false);
   const [snapshotLoading, setSnapshotLoading] = useState(false);
-  const quoteNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastPokeAlertId = useRef<string | null>(null);
   const lastSnapshotJournalText = useRef(demoSnapshot.journalText);
   const lastSnapshotQuoteText = useRef(demoSnapshot.quoteText);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [appToast, setAppToast] = useState('');
   const appToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const userId = session?.user.id;
+  const userId = session?.profile.id;
   const snapshotReady = demoMode || !userId || snapshot.profile.id === userId;
 
   const checkedIn = snapshot.checkedIn;
-  const statusText = snapshot.statusText;
+  const statusText = checkedIn
+    ? snapshot.statusText
+    : pendingMood.date === localDateIso() && pendingMood.value
+      ? pendingMood.value
+      : snapshot.statusText;
   const todos = snapshot.todos;
   const friends = snapshot.friends;
   const friendRequests = snapshot.friendRequests;
@@ -263,14 +331,20 @@ export default function App() {
   const aliveReplies = snapshot.aliveReplies;
   const sentPokes = snapshot.sentPokes;
   const diaryEntries = snapshot.diaryEntries;
-  const aliveDays = snapshot.aliveDays;
+  const aliveDays = Number.isFinite(snapshot.aliveDays) ? Math.max(0, Math.floor(snapshot.aliveDays)) : 0;
   const journalPhotoPaths = snapshot.journalPhotoPaths;
   const journalPhotoUrls = snapshot.journalPhotoUrls;
   const journalPhotoCount = journalPhotoPaths.length;
   const journalText = snapshot.journalText;
+  const personalMessages = snapshot.personalMessages;
   const quoteText = snapshot.quoteText;
+  const quoteSaved = checkedIn && snapshot.quoteSaved;
   const streak = snapshot.streak;
-  const weatherText = snapshot.weatherText;
+  const weatherText = checkedIn
+    ? snapshot.weatherText
+    : pendingWeather.date === localDateIso() && pendingWeather.value
+      ? pendingWeather.value
+      : snapshot.weatherText;
   const profile = snapshot.profile;
 
   const todayLabel = useMemo(() => {
@@ -309,28 +383,28 @@ export default function App() {
   }, [currentFriendIds, optimisticPokedFriendIds, sentPokedFriendIds]);
   const visibleAliveReplyNotices = useMemo(() => {
     const today = localDateIso();
-    return aliveReplies.filter((reply) => localDateIso(new Date(reply.createdAt)) === today && !dismissedReplyIds.has(reply.id));
+    return aliveReplies.filter(
+      (reply) =>
+        localDateIso(new Date(reply.createdAt)) === today &&
+        !reply.acknowledgedAt &&
+        !dismissedReplyIds.has(reply.id),
+    );
   }, [aliveReplies, dismissedReplyIds]);
   const friendSignalCount = incomingPokeCount + visibleAliveReplyNotices.length;
-  const todoNote = useMemo(() => todoNotes[Math.floor(Math.random() * todoNotes.length)], [tab]);
+  const currentDateIso = localDateIso();
+  const dailyEncouragement = useMemo(() => encouragementForDate(currentDateIso), [currentDateIso]);
 
   function showSavedFeedback(savedText = journalDraft.trim()) {
     setJournalSaveState('saved');
+    setJournalEditing(false);
     setSavedJournalText(savedText);
     if (saveNoticeTimer.current) clearTimeout(saveNoticeTimer.current);
     saveNoticeTimer.current = setTimeout(() => setJournalSaveState('idle'), 1400);
   }
 
-  function showQuoteSavedFeedback(savedText = quoteDraft.trim()) {
-    setQuoteSaveState('saved');
-    setSavedQuoteText(savedText);
-    if (quoteNoticeTimer.current) clearTimeout(quoteNoticeTimer.current);
-    quoteNoticeTimer.current = setTimeout(() => setQuoteSaveState('idle'), 1400);
-  }
-
   function requireCheckin() {
     if (checkedIn) return true;
-    Alert.alert('请先确认还活着吗？', '确认之后，今天的随笔、照片和三件事才会留下痕迹。');
+    Alert.alert('请先确认今天还在', '确认之后，今天的随笔、照片和三件事才会留下痕迹。');
     return false;
   }
 
@@ -341,19 +415,31 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (!hasSupabaseConfig) return;
+    if (!hasDomesticApiConfig) {
+      setSessionRestoring(false);
+      return;
+    }
 
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-    });
+    let active = true;
+    getDomesticPolicyConsent()
+      .then((accepted) => (accepted ? getDomesticSession() : null))
+      .then((nextSession) => {
+        if (active) setSession(nextSession);
+      })
+      .catch(() => {
+        if (active) setSession(null);
+      })
+      .finally(() => {
+        if (active) setSessionRestoring(false);
+      });
 
-    return () => subscription.subscription.unsubscribe();
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
     return () => {
-      if (quoteNoticeTimer.current) clearTimeout(quoteNoticeTimer.current);
       if (saveNoticeTimer.current) clearTimeout(saveNoticeTimer.current);
       if (appToastTimer.current) clearTimeout(appToastTimer.current);
     };
@@ -361,19 +447,19 @@ export default function App() {
 
   useEffect(() => {
     setSnapshot(demoSnapshot);
+    setPendingMood({ date: localDateIso(), value: '' });
+    setPendingWeather({ date: localDateIso(), value: '' });
     setJournalDraft(demoSnapshot.journalText);
     setQuoteDraft(demoSnapshot.quoteText);
     setSavedJournalText(demoSnapshot.journalText);
-    setSavedQuoteText('');
     setJournalSaveState('idle');
+    setJournalEditing(false);
     setQuoteSaveState('idle');
     setDismissedPokeIds(new Set());
     setDismissedReplyIds(new Set());
     setOptimisticPokedFriendIds(new Set());
-    setPokeNotice(DEFAULT_POKE_NOTICE);
     lastSnapshotJournalText.current = demoSnapshot.journalText;
     lastSnapshotQuoteText.current = demoSnapshot.quoteText;
-    lastPokeAlertId.current = null;
   }, [demoMode, userId]);
 
   useEffect(() => {
@@ -384,12 +470,8 @@ export default function App() {
 
     let cancelled = false;
 
-    const profilePhone = fallbackPhoneForSession(session);
-    const phoneName = profilePhone ? `用户${profilePhone.slice(-4)}` : '新朋友';
-
     setSnapshotLoading(true);
-    ensureProfile(userId, phoneName, profilePhone)
-      .then(() => loadAppSnapshot(userId))
+    loadDomesticAppSnapshot()
       .then((nextSnapshot) => {
         if (cancelled) return;
         setSnapshot((current) => keepStableSnapshotPhotos(current, nextSnapshot));
@@ -397,7 +479,7 @@ export default function App() {
       .catch(async (error) => {
         if (cancelled) return;
         if (error instanceof Error && error.message.includes('账户注销处理中')) {
-          await signOut();
+          await signOutDomestic();
           setSession(null);
           setSnapshot(demoSnapshot);
           Alert.alert('账户注销处理中', '这个账户已经提交注销，暂时不能继续登录。');
@@ -412,13 +494,13 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [demoMode, session?.user.email, session?.user.phone, userId]);
+  }, [demoMode, userId]);
 
   useEffect(() => {
     if (!userId || demoMode) return;
 
     const timer = setInterval(() => {
-      loadAppSnapshot(userId)
+      loadDomesticAppSnapshot()
         .then((nextSnapshot) => setSnapshot((current) => keepStableSnapshotPhotos(current, nextSnapshot)))
         .catch(() => {
           // 轻量同步好友回馈和戳一下，失败时避免频繁打扰用户。
@@ -431,11 +513,9 @@ export default function App() {
   useEffect(() => {
     setQuoteDraft((currentDraft) => (currentDraft === lastSnapshotQuoteText.current ? snapshot.quoteText : currentDraft));
     lastSnapshotQuoteText.current = snapshot.quoteText;
-    if (checkedIn && snapshot.quoteText.trim() && snapshot.quoteText.trim() !== demoSnapshot.quoteText) {
-      setSavedQuoteText(snapshot.quoteText);
-    }
+    if (snapshot.quoteSaved) setQuoteDraft(snapshot.quoteText);
     setQuoteSaveState((current) => (current === 'saving' ? current : 'idle'));
-  }, [checkedIn, snapshot.quoteText]);
+  }, [snapshot.quoteSaved, snapshot.quoteText]);
 
   useEffect(() => {
     setJournalDraft((currentDraft) => (currentDraft === lastSnapshotJournalText.current ? snapshot.journalText : currentDraft));
@@ -443,25 +523,15 @@ export default function App() {
     setSavedJournalText(snapshot.journalText);
   }, [snapshot.journalText]);
 
-  useEffect(() => {
-    if (visibleIncomingPokes.length === 0) return;
-
-    const latestPoke = visibleIncomingPokes[0];
-    if (lastPokeAlertId.current === latestPoke.id) return;
-
-    lastPokeAlertId.current = latestPoke.id;
-    setPokeNotice(`${latestPoke.friendName} 戳了你一下：还活着没？`);
-  }, [visibleIncomingPokes]);
-
   async function refreshSnapshot() {
     if (!userId || demoMode) return;
-    const nextSnapshot = await loadAppSnapshot(userId);
+    const nextSnapshot = await loadDomesticAppSnapshot();
     setSnapshot((current) => keepStableSnapshotPhotos(current, nextSnapshot));
   }
 
   async function handleCheckin() {
     if (!statusText.trim()) {
-      Alert.alert('先选今天心情', '选一个今天的状态，再确认还活着。');
+      Alert.alert('先选今天心情', '选一个今天的状态，再确认我还在。');
       return;
     }
 
@@ -470,14 +540,22 @@ export default function App() {
         ...current,
         aliveDays: current.checkedIn ? current.aliveDays : current.aliveDays + 1,
         checkedIn: true,
+        statusText,
         streak: current.checkedIn ? current.streak : current.streak + 1,
+        weatherText,
       }));
+      setPendingMood({ date: localDateIso(), value: '' });
+      setPendingWeather({ date: localDateIso(), value: '' });
+      setWeatherPickerOpen(false);
       return;
     }
 
     try {
-      await saveCheckin(userId, statusText, quoteText, journalText, journalPhotoPaths, weatherText);
+      await confirmDomesticCheckin(statusText, weatherText);
       await refreshSnapshot();
+      setPendingMood({ date: localDateIso(), value: '' });
+      setPendingWeather({ date: localDateIso(), value: '' });
+      setWeatherPickerOpen(false);
     } catch (error) {
       Alert.alert('打卡失败', error instanceof Error ? error.message : '请稍后再试');
       await refreshSnapshot().catch(() => undefined);
@@ -498,7 +576,7 @@ export default function App() {
     if (!userId || demoMode) return;
 
     try {
-      await updateTodoDone(id, !target.done);
+      await updateDomesticTodoDone(id, !target.done);
       await refreshSnapshot();
     } catch (error) {
       Alert.alert('更新失败', error instanceof Error ? error.message : '请稍后再试');
@@ -520,7 +598,7 @@ export default function App() {
     if (!userId || demoMode) return;
 
     try {
-      await updateTodoImportant(id, !target.important);
+      await updateDomesticTodoImportant(id, !target.important);
       await refreshSnapshot();
     } catch (error) {
       Alert.alert('标记失败', error instanceof Error ? error.message : '请稍后再试');
@@ -536,7 +614,7 @@ export default function App() {
 
     if (userId && !demoMode) {
       try {
-        const todo = await createTodo(userId, text, importantDraft);
+        const todo = await createDomesticTodo(text, importantDraft);
         setSnapshot((current) => ({ ...current, todos: [...current.todos, todo] }));
         await refreshSnapshot();
       } catch (error) {
@@ -555,12 +633,17 @@ export default function App() {
   }
 
   async function updateStatusText(value: string) {
+    if (!checkedIn) {
+      setPendingMood({ date: localDateIso(), value });
+      return;
+    }
+
     setSnapshot((current) => ({ ...current, statusText: value }));
 
-    if (!checkedIn || !userId || demoMode) return;
+    if (!userId || demoMode) return;
 
     try {
-      await saveCheckin(userId, value, quoteText, journalText, journalPhotoPaths, weatherText);
+      await saveDomesticCheckin(value, quoteText, journalText, journalPhotoPaths, weatherText);
       await refreshSnapshot();
     } catch (error) {
       Alert.alert('保存心情失败', error instanceof Error ? error.message : '请稍后再试');
@@ -573,13 +656,22 @@ export default function App() {
     setJournalSaveState('idle');
   }
 
+  function startJournalEditing() {
+    if (!requireCheckin()) return;
+    setJournalDraft(journalText);
+    setJournalSaveState('idle');
+    setJournalEditing(true);
+  }
+
   function updateQuoteText(value: string) {
+    if (quoteSaved) return;
     setQuoteDraft(value);
     setQuoteSaveState('idle');
   }
 
   async function saveQuote() {
     if (!requireCheckin()) return;
+    if (quoteSaved || quoteSaveState === 'saving') return;
 
     const nextQuote = quoteDraft.trim();
     if (!nextQuote) return;
@@ -587,24 +679,34 @@ export default function App() {
     setQuoteSaveState('saving');
 
     if (!userId || demoMode) {
-      setSnapshot((current) => ({ ...current, quoteText: nextQuote }));
-      showQuoteSavedFeedback(nextQuote);
+      setSnapshot((current) => ({ ...current, quoteText: nextQuote, quoteSaved: true }));
+      setQuoteSaveState('idle');
       return;
     }
 
     try {
-      await saveCheckin(userId, statusText, nextQuote, journalText, journalPhotoPaths, weatherText);
-      await refreshSnapshot();
-      showQuoteSavedFeedback(nextQuote);
+      await saveDomesticQuote(nextQuote);
+      setSnapshot((current) => ({ ...current, quoteText: nextQuote, quoteSaved: true }));
+      setQuoteSaveState('idle');
+      await refreshSnapshot().catch(() => undefined);
     } catch (error) {
       setQuoteSaveState('idle');
       Alert.alert('保存失败', error instanceof Error ? error.message : '请稍后再试');
-      await refreshSnapshot();
+      await refreshSnapshot().catch(() => undefined);
     }
+  }
+
+  function confirmSaveQuote() {
+    if (!requireCheckin() || quoteSaved || quoteSaveState === 'saving' || !quoteDraft.trim()) return;
+    Alert.alert('确认保存今日箴言？', '保存后这句话将作为今天的记录展示，不能再修改。', [
+      { text: '再想想', style: 'cancel' },
+      { text: '确认保存', onPress: () => void saveQuote() },
+    ]);
   }
 
   function shuffleQuote() {
     if (!requireCheckin()) return;
+    if (quoteSaved || quoteSaveState === 'saving') return;
 
     const currentIndex = quotePool.findIndex((quote) => quote === quoteDraft.trim());
     const nextQuote = quotePool[(currentIndex + 1 + quotePool.length) % quotePool.length];
@@ -627,7 +729,7 @@ export default function App() {
     }
 
     try {
-      await saveCheckin(userId, statusText, quoteText, nextJournal, journalPhotoPaths, weatherText);
+      await saveDomesticCheckin(statusText, quoteText, nextJournal, journalPhotoPaths, weatherText);
       await refreshSnapshot();
       showSavedFeedback(nextJournal);
     } catch (error) {
@@ -638,23 +740,23 @@ export default function App() {
   }
 
   function toggleWeatherPicker() {
-    if (!requireCheckin()) return;
+    if (checkedIn) {
+      setWeatherPickerOpen(false);
+      showAppToast('今日天气已随确认存档，不能再修改。');
+      return;
+    }
     setWeatherPickerOpen((current) => !current);
   }
 
   async function updateWeatherText(nextWeather: string) {
-    setSnapshot((current) => ({ ...current, weatherText: nextWeather }));
-    setWeatherPickerOpen(false);
-
-    if (!userId || demoMode) return;
-
-    try {
-      await saveCheckin(userId, statusText, quoteText, journalText, journalPhotoPaths, nextWeather);
-      await refreshSnapshot();
-    } catch (error) {
-      Alert.alert('保存天气失败', error instanceof Error ? error.message : '请稍后再试');
-      await refreshSnapshot();
+    if (checkedIn) {
+      setWeatherPickerOpen(false);
+      showAppToast('今日天气已随确认存档，不能再修改。');
+      return;
     }
+
+    setPendingWeather({ date: localDateIso(), value: nextWeather });
+    setWeatherPickerOpen(false);
   }
 
   function openQuickRecord() {
@@ -688,7 +790,7 @@ export default function App() {
     }
 
     try {
-      await saveCheckin(userId, statusText, quoteText, nextJournal, journalPhotoPaths, weatherText);
+      await saveDomesticCheckin(statusText, quoteText, nextJournal, journalPhotoPaths, weatherText);
       await refreshSnapshot();
       setJournalDraft(nextJournal);
       setQuickRecordDraft('');
@@ -702,6 +804,10 @@ export default function App() {
 
   async function addJournalPhoto() {
     if (!requireCheckin()) return;
+    if (!journalEditing) {
+      Alert.alert('请先进入编辑', '点击随笔小记中的“编辑”后，再添加照片。');
+      return;
+    }
 
     if (journalPhotoCount >= 3) {
       Alert.alert('最多 3 张', '今天的电子日记最多放 3 张照片。');
@@ -718,12 +824,14 @@ export default function App() {
       allowsEditing: false,
       allowsMultipleSelection: false,
       mediaTypes: ['images'],
+      preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
       quality: 0.82,
     });
 
     if (result.canceled || !result.assets[0]?.uri) return;
 
-    const localUri = result.assets[0].uri;
+    const selectedAsset = result.assets[0];
+    const localUri = selectedAsset.uri;
 
     if (!userId || demoMode) {
       setSnapshot((current) => ({
@@ -737,7 +845,12 @@ export default function App() {
 
     setUploadingPhoto(true);
     try {
-      const photo = await uploadJournalPhoto(userId, localUri);
+      const photo = await uploadDomesticJournalPhoto({
+        fileName: selectedAsset.fileName,
+        fileSize: selectedAsset.fileSize,
+        mimeType: selectedAsset.mimeType,
+        uri: localUri,
+      });
       const nextPaths = [...journalPhotoPaths, photo.path].slice(0, 3);
       const currentUrls = journalPhotoPaths.map((_path, index) => journalPhotoUrls[index] ?? '');
       const nextUrls = [...currentUrls, photo.signedUrl || localUri].slice(0, 3);
@@ -748,7 +861,7 @@ export default function App() {
         journalPhotoUrls: nextUrls,
       }));
 
-      await saveCheckin(userId, statusText, quoteText, journalText, nextPaths, weatherText);
+      await saveDomesticCheckin(statusText, quoteText, journalText, nextPaths, weatherText);
       await refreshSnapshot();
       showAppToast('照片已保存到今天。');
     } catch (error) {
@@ -758,8 +871,59 @@ export default function App() {
     }
   }
 
+  async function changeProfileAvatar() {
+    if (uploadingAvatar) return;
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('需要相册权限', '允许访问相册后，才能更换头像。');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      allowsMultipleSelection: false,
+      aspect: [1, 1],
+      mediaTypes: ['images'],
+      preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
+      quality: 0.82,
+    });
+    if (result.canceled || !result.assets[0]?.uri) return;
+
+    const selectedAsset = result.assets[0];
+    if (!userId || demoMode) {
+      setSnapshot((current) => ({
+        ...current,
+        profile: { ...current.profile, avatarUrl: selectedAsset.uri },
+      }));
+      showAppToast('头像已更新。');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const avatar = await uploadDomesticProfileAvatar({
+        fileName: selectedAsset.fileName,
+        fileSize: selectedAsset.fileSize,
+        mimeType: selectedAsset.mimeType,
+        uri: selectedAsset.uri,
+      });
+      setSnapshot((current) => ({
+        ...current,
+        profile: { ...current.profile, avatarUrl: avatar.avatarUrl },
+      }));
+      await refreshSnapshot();
+      showAppToast('头像已更新，好友列表会同步显示。');
+    } catch (error) {
+      Alert.alert('头像上传失败', error instanceof Error ? error.message : '请稍后再试');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
+
   async function removeJournalPhoto(index: number) {
     if (!requireCheckin()) return;
+    if (!journalEditing) return;
 
     const removedPath = journalPhotoPaths[index];
     const nextPaths = journalPhotoPaths.filter((_path, pathIndex) => pathIndex !== index);
@@ -778,8 +942,8 @@ export default function App() {
     }
 
     try {
-      if (removedPath) await deleteJournalPhoto(removedPath);
-      await saveCheckin(userId, statusText, quoteText, journalText, nextPaths, weatherText);
+      if (removedPath) await deleteDomesticJournalPhoto(removedPath);
+      await saveDomesticCheckin(statusText, quoteText, journalText, nextPaths, weatherText);
       await refreshSnapshot();
       showAppToast('照片已移除。');
     } catch (error) {
@@ -798,7 +962,7 @@ export default function App() {
 
     try {
       const result = await Share.share({
-        title: '活着吗',
+        title: '在否',
         message: buildTodayShareText({
           aliveDays,
           doneCount,
@@ -820,7 +984,7 @@ export default function App() {
   async function handleShareInvite() {
     try {
       const result = await Share.share({
-        title: '活着吗',
+        title: '在否',
         message: buildInviteShareText(),
       });
 
@@ -832,8 +996,7 @@ export default function App() {
     }
   }
 
-  const savedTodayQuoteText =
-    savedQuoteText.trim() || (checkedIn && quoteText.trim() && quoteText.trim() !== demoSnapshot.quoteText ? quoteText : '');
+  const savedTodayQuoteText = quoteSaved ? quoteText : '';
 
   const todayDiaryText = buildDiaryText({
     aliveDays,
@@ -864,12 +1027,12 @@ export default function App() {
 
   async function handleSendFriendRequest(phone: string) {
     if (!userId || demoMode) {
-      Alert.alert('演示模式', '接入 Supabase 并登录后，就可以添加真实好友。');
+      Alert.alert('演示模式', '使用手机号登录后，就可以添加真实好友。');
       return;
     }
 
     try {
-      await sendFriendRequest(userId, phone);
+      await sendDomesticFriendRequest(phone);
       await refreshSnapshot();
       showAppToast('好友申请已发送，等对方接受。');
     } catch (error) {
@@ -881,7 +1044,7 @@ export default function App() {
     if (!userId || demoMode) return;
 
     try {
-      await acceptFriendRequest(requestId);
+      await acceptDomesticFriendRequest(requestId);
       await refreshSnapshot();
     } catch (error) {
       Alert.alert('接受失败', error instanceof Error ? error.message : '请稍后再试');
@@ -891,13 +1054,12 @@ export default function App() {
   async function handlePokeFriend(friend: Friend) {
     if (pokedFriendIds.has(friend.id)) return;
 
-    setPokeNotice(`你戳了 ${friend.name} 一下：还活着没？`);
     setOptimisticPokedFriendIds((current) => new Set([...current, friend.id]));
 
     if (!userId || demoMode) return;
 
     try {
-      await pokeFriend(userId, friend.id);
+      await pokeDomesticFriend(friend.id);
       await refreshSnapshot();
       setOptimisticPokedFriendIds((current) => {
         const next = new Set(current);
@@ -915,13 +1077,12 @@ export default function App() {
   }
 
   async function handleReplyPoke(poke: IncomingPoke) {
-    setPokeNotice(`你回了 ${poke.friendName} 一下：我还活着。`);
     setDismissedPokeIds((current) => new Set([...current, poke.id]));
 
     if (!userId || demoMode) return;
 
     try {
-      await replyAliveToPoke(userId, poke.friendId);
+      await replyDomesticAliveToPoke(poke.friendId);
       await refreshSnapshot();
     } catch (error) {
       setDismissedPokeIds((current) => {
@@ -930,6 +1091,29 @@ export default function App() {
         return next;
       });
       Alert.alert('回馈失败', error instanceof Error ? error.message : '请稍后再试');
+    }
+  }
+
+  async function handleDismissAliveReply(replyId: string) {
+    setDismissedReplyIds((current) => new Set([...current, replyId]));
+
+    if (!userId || demoMode) return;
+
+    try {
+      await acknowledgeDomesticAliveReply(replyId);
+      setSnapshot((current) => ({
+        ...current,
+        aliveReplies: current.aliveReplies.map((reply) =>
+          reply.id === replyId ? { ...reply, acknowledgedAt: new Date().toISOString() } : reply,
+        ),
+      }));
+    } catch (error) {
+      setDismissedReplyIds((current) => {
+        const next = new Set(current);
+        next.delete(replyId);
+        return next;
+      });
+      Alert.alert('操作失败', error instanceof Error ? error.message : '请稍后再试');
     }
   }
 
@@ -946,7 +1130,7 @@ export default function App() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await deleteFriendship(userId, friend.id);
+            await deleteDomesticFriendship(friend.id);
             await refreshSnapshot();
           } catch (error) {
             Alert.alert('删除失败', error instanceof Error ? error.message : '请稍后再试');
@@ -973,7 +1157,7 @@ export default function App() {
     }
 
     try {
-      await updateProfile(userId, nextNickname);
+      await updateDomesticProfile(nextNickname);
     } catch (error) {
       Alert.alert('保存失败', error instanceof Error ? error.message : '请稍后再试');
       await refreshSnapshot();
@@ -993,14 +1177,31 @@ export default function App() {
     if (!userId || demoMode) return;
 
     try {
-      await updatePrivacySetting(userId, showStatusToFriends);
+      await updateDomesticPrivacySetting(showStatusToFriends);
     } catch (error) {
       Alert.alert('保存失败', error instanceof Error ? error.message : '请稍后再试');
       await refreshSnapshot();
     }
   }
 
-  async function handleSignOut() {
+  async function completeSignOut() {
+    setSigningOut(true);
+    try {
+      await signOutDomestic({ preserveBiometricLogin: true });
+      setSession(null);
+      setSnapshot(demoSnapshot);
+      setTab('today');
+      setDismissedPokeIds(new Set());
+      setDismissedReplyIds(new Set());
+      setOptimisticPokedFriendIds(new Set());
+    } catch (error) {
+      Alert.alert('退出失败', error instanceof Error ? error.message : '请检查网络后再试');
+    } finally {
+      setSigningOut(false);
+    }
+  }
+
+  function handleSignOut() {
     if (signingOut) return;
 
     if (demoMode) {
@@ -1009,65 +1210,20 @@ export default function App() {
       return;
     }
 
-    setSigningOut(true);
-    try {
-      await signOut();
-      setSession(null);
-      setSnapshot(demoSnapshot);
-      setTab('today');
-      setDismissedPokeIds(new Set());
-      setDismissedReplyIds(new Set());
-      setOptimisticPokedFriendIds(new Set());
-      setPokeNotice(DEFAULT_POKE_NOTICE);
-    } catch (error) {
-      Alert.alert('退出失败', error instanceof Error ? error.message : '请检查网络后再试');
-    } finally {
-      setSigningOut(false);
-    }
-  }
-
-  function handleDeleteAppData() {
-    if (demoMode) {
-      Alert.alert('演示模式', '演示数据只保存在当前 App 状态里，退出演示模式后会恢复。');
-      return;
-    }
-
-    if (!userId) return;
-
-    Alert.alert('删除本应用数据', '这会清空打卡、待办、好友关系和日记照片，并重置昵称；手机号登录资料会保留，方便之后继续被好友搜索到。', [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '删除',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteOwnAppData(userId);
-            await signOut();
-            setSession(null);
-            setSnapshot(demoSnapshot);
-            setTab('today');
-            setDismissedPokeIds(new Set());
-            setDismissedReplyIds(new Set());
-            setOptimisticPokedFriendIds(new Set());
-            setPokeNotice(DEFAULT_POKE_NOTICE);
-          } catch (error) {
-            if (isAuthSessionMissingError(error)) {
-              await signOut();
-              setSession(null);
-              setSnapshot(demoSnapshot);
-              setTab('today');
-              setDismissedPokeIds(new Set());
-              setDismissedReplyIds(new Set());
-              setOptimisticPokedFriendIds(new Set());
-              setPokeNotice(DEFAULT_POKE_NOTICE);
-              Alert.alert('登录状态已失效', '已返回登录页。这次没有删除云端数据，请重新登录后再删除。');
-              return;
-            }
-            Alert.alert('删除失败', error instanceof Error ? error.message : '请稍后再试');
-          }
+    Alert.alert(
+      '确认退出登录？',
+      '退出后将回到登录页面。若已开启 Face ID，可验证面容后直接登录；未开启时需要重新使用密码或验证码登录。已经保存的内容不会被删除。',
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '退出登录',
+          style: 'destructive',
+          onPress: () => {
+            void completeSignOut();
+          },
         },
-      },
-    ]);
+      ],
+    );
   }
 
   function handleRequestAccountDeletion() {
@@ -1080,7 +1236,7 @@ export default function App() {
 
     Alert.alert(
       '注销账户',
-      '注销后会立即退出登录，并停止展示你的昵称、手机号和好友关系。打卡、日记、照片等内容会按保留规则进入后续清理。',
+      '注销后会立即退出登录并停用账户，同时停止展示你的昵称、手机号和好友关系。相关个人信息和内容通常会在 7 天内彻底删除。',
       [
         { text: '取消', style: 'cancel' },
         {
@@ -1089,7 +1245,7 @@ export default function App() {
           onPress: () => {
             Alert.alert(
               '再次确认注销',
-              '确认后当前账户将进入注销流程：个人信息会先去标识化，其他内容最长保留一年后清理。这个操作提交后不能在 App 内撤销。',
+              '确认后当前账户会立即停用，相关个人信息、记录和照片通常会在 7 天内彻底删除；法律法规另有要求的除外。这个操作提交后不能在 App 内撤销。',
               [
                 { text: '再想想', style: 'cancel' },
                 {
@@ -1097,15 +1253,15 @@ export default function App() {
                   style: 'destructive',
                   onPress: async () => {
                     try {
-                      await requestAccountDeletion(userId);
-                      await signOut();
+                      await requestDomesticAccountDeletion();
+                      await disableDailyReminder().catch(() => undefined);
+                      await signOutDomestic();
                       setSession(null);
                       setSnapshot(demoSnapshot);
                       setTab('today');
                       setDismissedPokeIds(new Set());
                       setDismissedReplyIds(new Set());
                       setOptimisticPokedFriendIds(new Set());
-                      setPokeNotice(DEFAULT_POKE_NOTICE);
                       Alert.alert('注销成功', '账户已退出登录，个人信息已进入删除流程。');
                     } catch (error) {
                       Alert.alert('注销失败', error instanceof Error ? error.message : '请稍后再试');
@@ -1120,15 +1276,39 @@ export default function App() {
     );
   }
 
-  if (!demoMode && hasSupabaseConfig && !session) {
-    return <AuthScreen onUseDemo={() => setDemoMode(true)} />;
+  async function handleSavePersonalMessages(messages: PersonalMessage[]) {
+    const normalized = messages.map((item) => ({
+      message: item.message.trim(),
+      recipientName: item.recipientName.trim(),
+    }));
+
+    if (!userId || demoMode) {
+      const saved = normalized.map((item, index) => ({
+        ...item,
+        id: messages[index]?.id || `message-${Date.now()}-${index}`,
+      }));
+      setSnapshot((current) => ({ ...current, personalMessages: saved }));
+      return saved;
+    }
+
+    const saved = await saveDomesticPersonalMessages(normalized);
+    setSnapshot((current) => ({ ...current, personalMessages: saved }));
+    return saved;
   }
 
-  if (!demoMode && !hasSupabaseConfig) {
+  if (!demoMode && hasDomesticApiConfig && sessionRestoring) {
+    return <AccountLoadingScreen />;
+  }
+
+  if (!demoMode && hasDomesticApiConfig && !session) {
+    return <AuthScreen onSignedIn={setSession} onUseDemo={() => setDemoMode(true)} />;
+  }
+
+  if (!demoMode && !hasDomesticApiConfig) {
     return <LaunchScreen onUseDemo={() => setDemoMode(true)} />;
   }
 
-  if (!demoMode && hasSupabaseConfig && session && (!snapshotReady || snapshotLoading)) {
+  if (!demoMode && hasDomesticApiConfig && session && (!snapshotReady || snapshotLoading)) {
     return <AccountLoadingScreen />;
   }
 
@@ -1139,7 +1319,7 @@ export default function App() {
         <View style={styles.topbar}>
           <View>
             <Text style={styles.date}>{todayLabel}</Text>
-            <Text style={styles.logo}>活着吗</Text>
+            <Text style={styles.logo}>在否</Text>
           </View>
           <Pressable style={styles.iconButton} onPress={openQuickRecord}>
             <Text style={styles.iconText}>记</Text>
@@ -1153,6 +1333,7 @@ export default function App() {
               checkedIn={checkedIn}
               doneCount={doneCount}
               journalDraft={journalDraft}
+              journalEditing={journalEditing}
               journalPhotoPaths={journalPhotoPaths}
               journalPhotoUrls={journalPhotoUrls}
               journalSaveState={journalSaveState}
@@ -1160,18 +1341,19 @@ export default function App() {
               onAddJournalPhoto={addJournalPhoto}
               onCheckin={handleCheckin}
               onOpenDiary={openTodayDiary}
+              onEditJournal={startJournalEditing}
               onRemoveJournalPhoto={removeJournalPhoto}
               onSaveJournal={saveJournal}
-              onSaveQuote={saveQuote}
+              onSaveQuote={confirmSaveQuote}
               onShareToday={handleShareToday}
               onShuffleQuote={shuffleQuote}
               onSelectWeather={updateWeatherText}
               onToggleWeatherPicker={toggleWeatherPicker}
               quoteDraft={quoteDraft}
               quoteSaveState={quoteSaveState}
+              quoteSaved={quoteSaved}
               quoteText={quoteText}
               savedJournalText={savedJournalText}
-              savedQuoteText={savedQuoteText}
               setJournalDraft={updateJournalText}
               setQuoteDraft={updateQuoteText}
               setStatusText={updateStatusText}
@@ -1193,13 +1375,12 @@ export default function App() {
               incomingPokes={visibleIncomingPokes}
               onAcceptRequest={handleAcceptFriendRequest}
               onDeleteFriend={handleDeleteFriend}
-              onDismissReply={(replyId) => setDismissedReplyIds((current) => new Set([...current, replyId]))}
+              onDismissReply={handleDismissAliveReply}
               onPokeFriend={handlePokeFriend}
               onReplyPoke={handleReplyPoke}
               onSendRequest={handleSendFriendRequest}
               onShareInvite={handleShareInvite}
               pokedFriendIds={pokedFriendIds}
-              pokeNotice={pokeNotice}
               repliedFriendIds={repliedFriendIds}
             />
           )}
@@ -1208,9 +1389,11 @@ export default function App() {
               addTodo={addTodo}
               draft={draft}
               importantDraft={importantDraft}
+              onSavePersonalMessages={handleSavePersonalMessages}
+              personalMessages={personalMessages}
               setImportantDraft={setImportantDraft}
               setDraft={setDraft}
-              softNoteText={todoNote}
+              encouragementText={dailyEncouragement}
               todos={todos}
               toggleTodo={toggleTodo}
               toggleTodoImportant={toggleTodoImportant}
@@ -1219,15 +1402,16 @@ export default function App() {
           {tab === 'profile' && (
             <ProfileScreen
               aliveDays={aliveDays}
+              avatarUploading={uploadingAvatar}
               checkedIn={checkedIn}
               diaryEntries={visibleDiaryEntries}
               doneCount={doneCount}
               isDemo={demoMode}
+              onChangeAvatar={changeProfileAvatar}
               onSignOut={handleSignOut}
               signingOut={signingOut}
               onUpdatePrivacy={handleUpdatePrivacy}
               onUpdateNickname={handleUpdateNickname}
-              onDeleteAppData={handleDeleteAppData}
               onRequestAccountDeletion={handleRequestAccountDeletion}
               profile={profile}
               streak={streak}
@@ -1329,9 +1513,9 @@ function LaunchScreen({ onUseDemo }: { onUseDemo: () => void }) {
       <View style={styles.launch}>
         <View style={styles.launchCard}>
           <Text style={styles.launchKicker}>一人公司 MVP</Text>
-          <Text style={styles.launchTitle}>活着吗</Text>
+          <Text style={styles.launchTitle}>在否</Text>
           <Text style={styles.launchCopy}>
-            真实后端入口已经预留。现在可以先用演示模式继续打磨产品，等 Supabase 配好后自动切换到账号登录。
+            国内服务暂时不可用。你仍可以进入演示模式查看主要功能，稍后再尝试手机号登录。
           </Text>
           <Pressable style={styles.primaryButton} onPress={onUseDemo}>
             <Text style={styles.primaryButtonText}>进入演示模式</Text>
@@ -1342,14 +1526,51 @@ function LaunchScreen({ onUseDemo }: { onUseDemo: () => void }) {
   );
 }
 
-function AuthScreen({ onUseDemo }: { onUseDemo: () => void }) {
+function AuthScreen({
+  onSignedIn,
+  onUseDemo,
+}: {
+  onSignedIn: (session: DomesticSession) => void;
+  onUseDemo: () => void;
+}) {
+  const [loginMode, setLoginMode] = useState<'password' | 'code'>('password');
   const [code, setCode] = useState('');
   const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [sentPhone, setSentPhone] = useState('');
-  const [devSigningIn, setDevSigningIn] = useState('');
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
+  const [rememberLogin, setRememberLogin] = useState(true);
+  const [useBiometrics, setUseBiometrics] = useState(false);
+  const [biometricsAvailable, setBiometricsAvailable] = useState(false);
+  const [savedBiometricLogin, setSavedBiometricLogin] = useState(false);
+  const [acceptedAgreements, setAcceptedAgreements] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      LocalAuthentication.hasHardwareAsync(),
+      LocalAuthentication.isEnrolledAsync(),
+      getDomesticRememberMode(),
+      getDomesticPolicyConsent(),
+    ]).then(([hasHardware, isEnrolled, rememberMode, policyAccepted]) => {
+      if (!active) return;
+      setBiometricsAvailable(hasHardware && isEnrolled);
+      setSavedBiometricLogin(rememberMode === 'biometric');
+      setAcceptedAgreements(policyAccepted);
+      if (rememberMode === 'biometric') {
+        setRememberLogin(true);
+        setUseBiometrics(true);
+      }
+    }).catch(() => {
+      if (active) setBiometricsAvailable(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (resendCountdown <= 0) return undefined;
@@ -1375,19 +1596,33 @@ function AuthScreen({ onUseDemo }: { onUseDemo: () => void }) {
     if (lowerMessage.includes('token has expired') || lowerMessage.includes('expired or is invalid')) {
       return '验证码已过期或不正确。请使用最后一次收到的验证码，并在有效期内输入；如果重新发送过，旧验证码会失效。';
     }
-    if (lowerMessage.includes('unsupported phone provider')) {
-      return 'Supabase 还没有启用手机号登录。请到 Authentication > Providers > Phone 打开 Phone Provider，并确认 Send SMS Hook 已保存。';
-    }
     return message || '请稍后再试';
   }
 
+  function requireAgreementAcceptance() {
+    if (acceptedAgreements) return true;
+    Alert.alert('请先阅读并同意协议', '请勾选同意《隐私政策》《用户协议》和《注册协议》后再继续。');
+    return false;
+  }
+
+  async function toggleAgreementAcceptance() {
+    const nextValue = !acceptedAgreements;
+    try {
+      await setDomesticPolicyConsent(nextValue);
+      setAcceptedAgreements(nextValue);
+    } catch {
+      Alert.alert('保存失败', '协议同意状态保存失败，请稍后再试。');
+    }
+  }
+
   async function sendCode() {
+    if (!requireAgreementAcceptance()) return;
     const value = normalizePhone(phone.trim());
     if (!value) return;
 
     setSending(true);
     try {
-      await withTimeout(sendPhoneLoginCode(value), 10000, '发送验证码超时，请检查网络后再试');
+      await withTimeout(sendDomesticPhoneLoginCode(value), 10000, '发送验证码超时，请检查网络后再试');
       setSentPhone(value);
       setCode('');
       setResendCountdown(SMS_RESEND_SECONDS);
@@ -1399,13 +1634,36 @@ function AuthScreen({ onUseDemo }: { onUseDemo: () => void }) {
     }
   }
 
-  async function verifyCode() {
-    const token = code.trim();
-    if (!sentPhone || token.length < 6) return;
+  async function completeSignIn(nextSession: DomesticSession) {
+    if (rememberLogin && useBiometrics) {
+      const authentication = await LocalAuthentication.authenticateAsync({
+        cancelLabel: '取消',
+        disableDeviceFallback: false,
+        fallbackLabel: '使用设备密码',
+        promptMessage: '启用 Face ID 或生物识别自动登录',
+      });
+      if (!authentication.success) throw new Error('未完成生物识别，暂未启用自动登录');
+    }
+    await saveDomesticSession(nextSession, {
+      remember: rememberLogin,
+      useBiometrics: rememberLogin && useBiometrics,
+    });
+    onSignedIn(nextSession);
+  }
+
+  async function passwordLogin() {
+    if (!requireAgreementAcceptance()) return;
+    const value = normalizePhone(phone.trim());
+    if (!value || !password) return;
 
     setVerifying(true);
     try {
-      await withTimeout(verifyPhoneLoginCode(sentPhone, token), 10000, '验证码登录超时，请检查网络后再试');
+      const nextSession = await withTimeout(
+        signInDomesticWithPassword(value, password),
+        10000,
+        '密码登录超时，请检查网络后再试',
+      );
+      await completeSignIn(nextSession);
     } catch (error) {
       Alert.alert('登录失败', formatAuthError(error));
     } finally {
@@ -1413,24 +1671,41 @@ function AuthScreen({ onUseDemo }: { onUseDemo: () => void }) {
     }
   }
 
-  async function signInDevAccount(email: string) {
-    if (!devTestPassword) {
-      Alert.alert('测试账号未配置', '请先在本地环境或 EAS preview 环境里配置测试账号密码。');
+  async function resetPasswordAndLogin() {
+    if (!requireAgreementAcceptance()) return;
+    const token = code.trim();
+    if (!sentPhone || token.length < 6 || !password || !passwordConfirmation) return;
+    if (password !== passwordConfirmation) {
+      Alert.alert('两次密码不一致', '请重新确认登录密码。');
       return;
     }
 
-    setDevSigningIn(email);
+    setVerifying(true);
     try {
-      await withTimeout(signInWithPassword(email, devTestPassword), 10000, '测试账号登录超时，请检查 iPhone 网络后再试');
-    } catch (error) {
-      Alert.alert(
-        '测试账号登录失败',
-        error instanceof Error
-          ? `${error.message}\n\n请确认 Supabase Authentication 里已经创建 ${email}，并且测试账号密码与当前环境配置一致。`
-          : '请稍后再试',
+      const nextSession = await withTimeout(
+        resetDomesticPasswordWithCode(sentPhone, token, password),
+        12000,
+        '验证码验证超时，请检查网络后再试',
       );
+      await completeSignIn(nextSession);
+    } catch (error) {
+      Alert.alert('验证失败', formatAuthError(error));
     } finally {
-      setDevSigningIn('');
+      setVerifying(false);
+    }
+  }
+
+  async function biometricLogin() {
+    if (!requireAgreementAcceptance()) return;
+    setVerifying(true);
+    try {
+      const nextSession = await getDomesticSession();
+      if (!nextSession) throw new Error('没有可用的生物识别登录凭证，请使用密码登录');
+      onSignedIn(nextSession);
+    } catch (error) {
+      Alert.alert('自动登录未完成', error instanceof Error ? error.message : '请使用密码登录');
+    } finally {
+      setVerifying(false);
     }
   }
 
@@ -1446,70 +1721,220 @@ function AuthScreen({ onUseDemo }: { onUseDemo: () => void }) {
         >
           <View style={styles.launchCard}>
           <Text style={styles.launchKicker}>欢迎回来</Text>
-          <Text style={styles.launchTitle}>今天，活着吗？</Text>
-          <Text style={styles.launchCopy}>默认中国大陆区号，直接输入 11 位手机号即可。其他地区请带国际区号。</Text>
+          <Text style={styles.launchTitle}>今天，还在吗？</Text>
+          <Text style={styles.launchCopy}>手机号就是登录账号。首次设置或忘记密码时，再使用短信验证码。</Text>
+
+          <View style={styles.authModeTabs}>
+            <Pressable
+              onPress={() => {
+                setLoginMode('password');
+                setCode('');
+                setSentPhone('');
+              }}
+              style={[styles.authModeButton, loginMode === 'password' && styles.authModeButtonActive]}
+            >
+              <Text style={[styles.authModeText, loginMode === 'password' && styles.authModeTextActive]}>密码登录</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                setLoginMode('code');
+                setPassword('');
+                setPasswordConfirmation('');
+              }}
+              style={[styles.authModeButton, loginMode === 'code' && styles.authModeButtonActive]}
+            >
+              <Text style={[styles.authModeText, loginMode === 'code' && styles.authModeTextActive]}>验证码设置密码</Text>
+            </Pressable>
+          </View>
+
           <View style={styles.phoneInputWrap}>
             <Text style={styles.phonePrefix}>+86</Text>
             <TextInput
+              autoComplete="tel"
               keyboardType="phone-pad"
               onChangeText={setPhone}
-              placeholder="13800138000"
+              placeholder="手机号（登录账号）"
               placeholderTextColor="#777268"
               style={styles.phoneInput}
               value={phone}
             />
           </View>
-          <Pressable
-            disabled={sending || resendCountdown > 0 || !phone.trim()}
-            style={[styles.primaryButton, (sending || resendCountdown > 0 || !phone.trim()) && styles.disabledButton]}
-            onPress={sendCode}
-          >
-            <Text style={styles.primaryButtonText}>
-              {sending ? '发送中' : resendCountdown > 0 ? `${resendCountdown} 秒后可重新发送` : sentPhone ? '重新发送验证码' : '发送验证码'}
-            </Text>
-          </Pressable>
-          {sentPhone ? (
+
+          {loginMode === 'password' ? (
             <>
-              <Text style={styles.authHint}>验证码已发送到 {sentPhone}，60 秒内有效。重新发送后，旧验证码会失效。</Text>
               <TextInput
-                keyboardType="number-pad"
-                maxLength={6}
-                onChangeText={setCode}
-                onSubmitEditing={verifyCode}
-                placeholder="输入 6 位验证码"
+                autoCapitalize="none"
+                autoComplete="password"
+                maxLength={64}
+                onChangeText={setPassword}
+                onSubmitEditing={passwordLogin}
+                placeholder="输入登录密码"
                 placeholderTextColor="#777268"
+                secureTextEntry
                 style={styles.authInput}
-                value={code}
+                textContentType="password"
+                value={password}
               />
               <Pressable
-                disabled={verifying || code.trim().length < 6}
-                style={[styles.primaryButton, (verifying || code.trim().length < 6) && styles.disabledButton]}
-                onPress={verifyCode}
+                disabled={verifying || !acceptedAgreements || !phone.trim() || !password}
+                onPress={passwordLogin}
+                style={[
+                  styles.primaryButton,
+                  (verifying || !acceptedAgreements || !phone.trim() || !password) && styles.disabledButton,
+                ]}
               >
-                <Text style={styles.primaryButtonText}>{verifying ? '登录中' : '确认登录'}</Text>
+                <Text style={styles.primaryButtonText}>{verifying ? '登录中' : '登录'}</Text>
               </Pressable>
             </>
+          ) : (
+            <>
+              <Pressable
+                disabled={sending || !acceptedAgreements || resendCountdown > 0 || !phone.trim()}
+                style={[
+                  styles.primaryButton,
+                  (sending || !acceptedAgreements || resendCountdown > 0 || !phone.trim()) && styles.disabledButton,
+                ]}
+                onPress={sendCode}
+              >
+                <Text style={styles.primaryButtonText}>
+                  {sending ? '发送中' : resendCountdown > 0 ? `${resendCountdown} 秒后可重新发送` : sentPhone ? '重新发送验证码' : '发送验证码'}
+                </Text>
+              </Pressable>
+              {sentPhone ? (
+                <>
+                  <Text style={styles.authHint}>验证码已发送到 {sentPhone}，验证后会设置或重置登录密码。</Text>
+                  <TextInput
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    onChangeText={setCode}
+                    placeholder="输入 6 位验证码"
+                    placeholderTextColor="#777268"
+                    style={styles.authInput}
+                    value={code}
+                  />
+                  <TextInput
+                    autoCapitalize="none"
+                    maxLength={64}
+                    onChangeText={setPassword}
+                    placeholder="设置新密码（8–64 位，含字母和数字）"
+                    placeholderTextColor="#777268"
+                    secureTextEntry
+                    style={styles.authInput}
+                    textContentType="newPassword"
+                    value={password}
+                  />
+                  <TextInput
+                    autoCapitalize="none"
+                    maxLength={64}
+                    onChangeText={setPasswordConfirmation}
+                    onSubmitEditing={resetPasswordAndLogin}
+                    placeholder="再次输入新密码"
+                    placeholderTextColor="#777268"
+                    secureTextEntry
+                    style={styles.authInput}
+                    textContentType="newPassword"
+                    value={passwordConfirmation}
+                  />
+                  <Pressable
+                    disabled={verifying || !acceptedAgreements || code.trim().length < 6 || !password || !passwordConfirmation}
+                    style={[
+                      styles.primaryButton,
+                      (verifying || !acceptedAgreements || code.trim().length < 6 || !password || !passwordConfirmation) && styles.disabledButton,
+                    ]}
+                    onPress={resetPasswordAndLogin}
+                  >
+                    <Text style={styles.primaryButtonText}>{verifying ? '验证中' : '设置密码并登录'}</Text>
+                  </Pressable>
+                </>
+              ) : null}
+            </>
+          )}
+
+          {savedBiometricLogin ? (
+            <Pressable
+              disabled={verifying || !acceptedAgreements}
+              onPress={biometricLogin}
+              style={[styles.biometricLoginButton, (verifying || !acceptedAgreements) && styles.disabledButton]}
+            >
+              <Text style={styles.biometricLoginIcon}>◉</Text>
+              <Text style={styles.biometricLoginText}>使用 Face ID 登录（无需输入密码）</Text>
+            </Pressable>
           ) : null}
+
+          <View style={styles.authOptions}>
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: rememberLogin }}
+              onPress={() => {
+                setRememberLogin((current) => {
+                  if (current) setUseBiometrics(false);
+                  return !current;
+                });
+              }}
+              style={styles.authOptionRow}
+            >
+              <View style={[styles.authCheckbox, rememberLogin && styles.authCheckboxChecked]}>
+                <Text style={styles.authCheckboxText}>{rememberLogin ? '✓' : ''}</Text>
+              </View>
+              <View style={styles.authOptionCopy}>
+                <Text style={styles.authOptionTitle}>记住登录状态</Text>
+                <Text style={styles.authOptionMeta}>安全保存登录凭证，不保存明文密码</Text>
+              </View>
+            </Pressable>
+            {biometricsAvailable ? (
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: rememberLogin && useBiometrics }}
+                onPress={() => {
+                  setRememberLogin(true);
+                  setUseBiometrics((current) => !current);
+                }}
+                style={styles.authOptionRow}
+              >
+                <View style={[styles.authCheckbox, rememberLogin && useBiometrics && styles.authCheckboxChecked]}>
+                  <Text style={styles.authCheckboxText}>{rememberLogin && useBiometrics ? '✓' : ''}</Text>
+                </View>
+                <View style={styles.authOptionCopy}>
+                  <Text style={styles.authOptionTitle}>Face ID / 生物识别自动登录</Text>
+                  <Text style={styles.authOptionMeta}>下次打开 App 时由系统验证身份</Text>
+                </View>
+              </Pressable>
+            ) : null}
+          </View>
+
           <Pressable style={styles.secondaryButton} onPress={onUseDemo}>
             <Text style={styles.secondaryButtonText}>先看演示模式</Text>
           </Pressable>
-          {showDevTestAccounts ? (
-            <View style={styles.devAccountPanel}>
-              <Text style={styles.devAccountHint}>开发内测：走真实 Supabase 数据，不依赖短信验证码。</Text>
-              <View style={styles.devAccountRow}>
-                {devTestAccounts.map((account) => (
-                  <Pressable
-                    key={account.email}
-                    disabled={Boolean(devSigningIn)}
-                    style={[styles.devAccountButton, Boolean(devSigningIn) && styles.disabledButton]}
-                    onPress={() => signInDevAccount(account.email)}
-                  >
-                    <Text style={styles.devButtonText}>{devSigningIn === account.email ? '登录中' : account.label}</Text>
-                  </Pressable>
-                ))}
+
+          <View style={styles.authAgreementRow}>
+            <Pressable
+              accessibilityLabel="同意隐私政策、用户协议和注册协议"
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: acceptedAgreements }}
+              hitSlop={8}
+              onPress={() => {
+                void toggleAgreementAcceptance();
+              }}
+            >
+              <View style={[styles.authCheckbox, acceptedAgreements && styles.authCheckboxChecked]}>
+                <Text style={styles.authCheckboxText}>{acceptedAgreements ? '✓' : ''}</Text>
               </View>
-            </View>
-          ) : null}
+            </Pressable>
+            <Text style={styles.authAgreementText}>
+              我已阅读并同意
+              <Text style={styles.authAgreementLink} onPress={() => void openExternalUrl(PRIVACY_POLICY_URL, '隐私政策')}>
+                《隐私政策》
+              </Text>
+              、
+              <Text style={styles.authAgreementLink} onPress={() => void openExternalUrl(TERMS_OF_SERVICE_URL, '用户协议')}>
+                《用户协议》
+              </Text>
+              和
+              <Text style={styles.authAgreementLink} onPress={() => void openExternalUrl(REGISTRATION_AGREEMENT_URL, '注册协议')}>
+                《注册协议》
+              </Text>
+            </Text>
+          </View>
         </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -1522,12 +1947,14 @@ function TodayScreen({
   checkedIn,
   doneCount,
   journalDraft,
+  journalEditing,
   journalPhotoPaths,
   journalPhotoUrls,
   journalSaveState,
   journalText,
   onAddJournalPhoto,
   onCheckin,
+  onEditJournal,
   onOpenDiary,
   onRemoveJournalPhoto,
   onSaveJournal,
@@ -1538,9 +1965,9 @@ function TodayScreen({
   onToggleWeatherPicker,
   quoteDraft,
   quoteSaveState,
+  quoteSaved,
   quoteText,
   savedJournalText,
-  savedQuoteText,
   setJournalDraft,
   setQuoteDraft,
   setStatusText,
@@ -1557,12 +1984,14 @@ function TodayScreen({
   checkedIn: boolean;
   doneCount: number;
   journalDraft: string;
+  journalEditing: boolean;
   journalPhotoPaths: string[];
   journalPhotoUrls: string[];
   journalSaveState: SaveState;
   journalText: string;
   onAddJournalPhoto: () => void;
   onCheckin: () => void;
+  onEditJournal: () => void;
   onOpenDiary: () => void;
   onRemoveJournalPhoto: (index: number) => void;
   onSaveJournal: () => void;
@@ -1573,9 +2002,9 @@ function TodayScreen({
   onToggleWeatherPicker: () => void;
   quoteDraft: string;
   quoteSaveState: SaveState;
+  quoteSaved: boolean;
   quoteText: string;
   savedJournalText: string;
-  savedQuoteText: string;
   setJournalDraft: (value: string) => void;
   setQuoteDraft: (value: string) => void;
   setStatusText: (value: string) => void;
@@ -1617,7 +2046,6 @@ function TodayScreen({
     outputRange: [0.82, 1],
   });
   const savePulse = useRef(new Animated.Value(1)).current;
-  const quotePulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (journalSaveState !== 'saved') return;
@@ -1628,26 +2056,18 @@ function TodayScreen({
     ]).start();
   }, [journalSaveState, savePulse]);
 
-  useEffect(() => {
-    if (quoteSaveState !== 'saved') return;
-
-    Animated.sequence([
-      Animated.timing(quotePulse, { toValue: 1.05, duration: 120, useNativeDriver: true }),
-      Animated.timing(quotePulse, { toValue: 1, duration: 160, useNativeDriver: true }),
-    ]).start();
-  }, [quotePulse, quoteSaveState]);
-
-  const canSaveJournal = journalDraft.trim() !== journalText.trim();
+  const canSaveJournal = journalEditing && checkedIn;
   const savingJournal = journalSaveState === 'saving';
   const journalSaveLabel = journalSaveState === 'saving' ? '保存中' : journalSaveState === 'saved' ? '已保存' : '保存';
   const savingQuote = quoteSaveState === 'saving';
-  const quoteSaveLabel = quoteSaveState === 'saving' ? '保存中' : quoteSaveState === 'saved' ? '已保存' : '保存';
+  const quoteSaveLabel = savingQuote ? '保存中' : '保存今日箴言';
+  const quoteDate = localDateIso();
   const hasSavedMood = checkedIn && statusText.trim().length > 0;
   const archiveItems = [
     { done: checkedIn, label: '天气', mark: '天' },
     { done: hasSavedMood, label: '心情', mark: '心' },
     { done: checkedIn && savedJournalText.trim().length > 0, label: '随笔', mark: '随' },
-    { done: checkedIn && savedQuoteText.trim().length > 0, label: '箴言', mark: '箴' },
+    { done: quoteSaved, label: '箴言', mark: '箴' },
     { done: todos.some((todo) => todo.done), label: '三件事', mark: '事' },
   ];
   const archiveDoneCount = archiveItems.filter((item) => item.done).length;
@@ -1666,7 +2086,7 @@ function TodayScreen({
                 <Text style={styles.lifeSignalLabel}>今日存档</Text>
                 <View style={styles.weatherCurrentRow}>
                   <Text style={styles.weatherButtonText}>{weatherText.split(' ')[0]}</Text>
-                  <Text style={styles.weatherArrow}>{weatherPickerOpen ? '⌃' : '⌄'}</Text>
+                  <Text style={styles.weatherArrow}>{checkedIn ? '🔒' : weatherPickerOpen ? '⌃' : '⌄'}</Text>
                 </View>
               </View>
               <View style={styles.archiveDots}>
@@ -1705,71 +2125,72 @@ function TodayScreen({
           </View>
         )}
         <Text style={styles.heroKicker}>{checkedIn ? '今日已确认' : '今日还没确认'}</Text>
-        <Text style={styles.heroTitle}>{checkedIn ? '还活着，挺好。' : '今天，活着吗？'}</Text>
+        <Text style={styles.heroTitle}>{checkedIn ? '我还在，挺好。' : '今天，还在吗？'}</Text>
         <Text style={styles.heroCopy}>
-          {checkedIn ? `送给自己：${quoteText}` : '点一下，不解释，不汇报。只是给自己留个小小的信号。'}
+          {checkedIn ? '今天已经留下一个小小的信号。想说的话，留在下面慢慢写。' : '点一下，不解释，不汇报。只是给自己留个小小的信号。'}
         </Text>
         <Pressable style={styles.primaryButton} onPress={onCheckin}>
-          <Text style={styles.primaryButtonText}>{checkedIn ? '今天已确认' : '确认我还活着'}</Text>
+          <Text style={styles.primaryButtonText}>{checkedIn ? '今天已确认' : '确认我还在'}</Text>
         </Pressable>
       </View>
 
       <View style={styles.metricsGrid}>
-        <MetricCard label="累计存活" value={`${aliveDays} 天`} valueColor={colors.green} />
-        <MetricCard label="连续存活" value={`${streak} 天`} valueColor={colors.yellow} />
+        <MetricCard label="累计存在" value={`${aliveDays} 天`} valueColor={colors.green} />
+        <MetricCard label="连续存在" value={`${streak} 天`} valueColor={colors.yellow} />
         <MetricCard label="今天要做的" value={`${todos.length} 件`} valueColor={colors.blue} />
       </View>
 
       <View style={styles.panel}>
-        <SectionHead title={checkedIn ? '今天心情和随笔' : '随笔小记'} meta={checkedIn ? '随便记一下' : '确认后留下'} />
-        {checkedIn && (
-          <View style={styles.noteList}>
-            {notes.map((note) => (
-              <Pressable
-                key={note}
-                style={[styles.noteChip, statusText === note && styles.noteChipActive]}
-                onPress={() => setStatusText(note)}
-              >
-                <Text numberOfLines={1} style={[styles.noteText, statusText === note && styles.noteTextActive]}>{note}</Text>
-              </Pressable>
-            ))}
+        <View style={styles.journalSectionHead}>
+          <View>
+            <Text style={styles.sectionTitle}>随笔小记</Text>
+            <Text style={styles.journalSectionMeta}>
+              {!checkedIn ? '确认后留下' : journalEditing ? '编辑完成后请保存' : '已保存，点击编辑可修改'}
+            </Text>
           </View>
-        )}
-        <Text style={styles.fieldLabel}>随笔小记</Text>
+          {!journalEditing ? (
+            <Pressable disabled={!checkedIn} onPress={onEditJournal} style={[styles.journalEditButton, !checkedIn && styles.disabledButton]}>
+              <Text style={styles.journalEditButtonText}>编辑</Text>
+            </Pressable>
+          ) : null}
+        </View>
         <TextInput
+          editable={checkedIn && journalEditing}
           maxLength={180}
           multiline
           onChangeText={setJournalDraft}
           placeholder="一时兴起的话，可以写在这里。"
           placeholderTextColor="#777268"
-          style={styles.journalInput}
+          style={[styles.journalInput, !journalEditing && styles.journalInputReadOnly]}
           textAlignVertical="top"
           value={journalDraft}
         />
         {journalText ? <Text style={styles.journalHint}>已留在今天：{journalText}</Text> : null}
-        <View style={styles.photoActionRow}>
-          <Animated.View style={{ transform: [{ scale: savePulse }] }}>
+        {journalEditing ? (
+          <View style={styles.photoActionRow}>
+            <Animated.View style={{ transform: [{ scale: savePulse }] }}>
+              <Pressable
+                disabled={!canSaveJournal || savingJournal}
+                style={[
+                  styles.journalSaveButton,
+                  journalSaveState === 'saved' && styles.journalSaveButtonSaved,
+                  (!canSaveJournal || savingJournal) && styles.disabledButton,
+                ]}
+                onPress={onSaveJournal}
+              >
+                <Text style={styles.journalSaveButtonText}>{journalSaveLabel}</Text>
+              </Pressable>
+            </Animated.View>
             <Pressable
-              disabled={!canSaveJournal || savingJournal}
-              style={[
-                styles.journalSaveButton,
-                journalSaveState === 'saved' && styles.journalSaveButtonSaved,
-                (!canSaveJournal || savingJournal) && styles.disabledButton,
-              ]}
-              onPress={onSaveJournal}
+              disabled={uploadingPhoto || journalPhotoCount >= 3}
+              style={[styles.photoAddButton, (uploadingPhoto || journalPhotoCount >= 3) && styles.disabledButton]}
+              onPress={onAddJournalPhoto}
             >
-              <Text style={styles.journalSaveButtonText}>{journalSaveLabel}</Text>
+              <Text style={styles.photoAddButtonText}>{uploadingPhoto ? '上传中' : '添加照片'}</Text>
             </Pressable>
-          </Animated.View>
-          <Pressable
-            disabled={uploadingPhoto || journalPhotoCount >= 3}
-            style={[styles.photoAddButton, (uploadingPhoto || journalPhotoCount >= 3) && styles.disabledButton]}
-            onPress={onAddJournalPhoto}
-          >
-            <Text style={styles.photoAddButtonText}>{uploadingPhoto ? '上传中' : '添加照片'}</Text>
-          </Pressable>
-          <Text style={styles.photoLimitText}>{journalPhotoCount}/3</Text>
-        </View>
+            <Text style={styles.photoLimitText}>{journalPhotoCount}/3</Text>
+          </View>
+        ) : null}
         {journalPhotoPaths.length > 0 && (
           <View style={styles.photoGrid}>
             {journalPhotoPaths.map((path, index) => {
@@ -1778,9 +2199,11 @@ function TodayScreen({
               return (
                 <View key={path} style={styles.photoThumbWrap}>
                   {url ? <Image source={{ uri: url }} style={styles.photoThumb} /> : null}
-                  <Pressable style={styles.photoRemoveButton} onPress={() => onRemoveJournalPhoto(index)}>
-                    <Text style={styles.photoRemoveText}>×</Text>
-                  </Pressable>
+                  {journalEditing ? (
+                    <Pressable style={styles.photoRemoveButton} onPress={() => onRemoveJournalPhoto(index)}>
+                      <Text style={styles.photoRemoveText}>×</Text>
+                    </Pressable>
+                  ) : null}
                 </View>
               );
             })}
@@ -1789,31 +2212,57 @@ function TodayScreen({
       </View>
 
       <View style={styles.panel}>
-        <SectionHead title="送给自己的一句话" meta="每日箴言" />
-        <TextInput
-          maxLength={96}
-          multiline
-          onChangeText={setQuoteDraft}
-          placeholder="今天想留给自己的话"
-          placeholderTextColor="#777268"
-          style={styles.quoteCardInput}
-          textAlignVertical="center"
-          value={quoteDraft}
-        />
-        <View style={styles.quoteActionRow}>
-          <Animated.View style={{ transform: [{ scale: quotePulse }] }}>
-            <Pressable
-              disabled={!quoteDraft.trim() || savingQuote}
-              onPress={onSaveQuote}
-              style={[styles.quoteActionButton, quoteSaveState === 'saved' && styles.addButtonSaved, (!quoteDraft.trim() || savingQuote) && styles.disabledButton]}
-            >
-              <Text style={styles.quoteActionButtonText}>{quoteSaveLabel}</Text>
-            </Pressable>
-          </Animated.View>
-          <Pressable onPress={onShuffleQuote} style={[styles.quoteActionButton, styles.quoteShuffleButton]}>
-            <Text style={styles.shuffleButtonText}>换一句</Text>
-          </Pressable>
+        <SectionHead title="每日箴言" meta="留给今天的自己" />
+        <View style={styles.quoteSheet}>
+          <View style={styles.quoteSheetHeader}>
+            <Text style={styles.quoteSheetKicker}>TO MYSELF · {quoteDate.slice(5).replace('-', '.')}</Text>
+            <Text style={styles.quoteSheetMark}>“</Text>
+          </View>
+          {quoteSaved ? (
+            <Text style={styles.quoteDisplayText}>{quoteText}</Text>
+          ) : (
+            <TextInput
+              editable={!savingQuote}
+              maxLength={96}
+              multiline
+              onChangeText={setQuoteDraft}
+              placeholder="今天想留给自己的话"
+              placeholderTextColor="#8d9a88"
+              style={styles.quoteCardInput}
+              textAlignVertical="center"
+              value={quoteDraft}
+            />
+          )}
+          <View style={styles.quoteSheetFooter}>
+            <Text style={styles.quoteSheetMeta}>
+              {quoteSaved ? `${quoteDate.replaceAll('-', '.')} · 写给自己` : '可以自己写，也可以换一句'}
+            </Text>
+            <Text style={[styles.quoteSheetStatus, quoteSaved && styles.quoteSheetStatusSaved]}>
+              {quoteSaved ? '✓ 已保存' : '未保存'}
+            </Text>
+          </View>
         </View>
+        {quoteSaved ? (
+          <Text style={styles.quoteHint}>今天的话已留下，不再修改。明天再写新的一句。</Text>
+        ) : (
+          <>
+            <View style={styles.quoteActionRow}>
+              <Pressable disabled={!checkedIn || savingQuote} onPress={onShuffleQuote} style={[styles.quoteShuffleButton, (!checkedIn || savingQuote) && styles.disabledButton]}>
+                <Text style={styles.shuffleButtonText}>换一句</Text>
+              </Pressable>
+              <Pressable
+                disabled={!checkedIn || !quoteDraft.trim() || savingQuote}
+                onPress={onSaveQuote}
+                style={[styles.quoteActionButton, (!checkedIn || !quoteDraft.trim() || savingQuote) && styles.disabledButton]}
+              >
+                <Text style={styles.quoteActionButtonText}>{quoteSaveLabel}</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.quoteHint}>
+              {checkedIn ? '保存前请确认内容，保存后不可修改。' : '确认今天还在之后可保存，保存后不可修改。'}
+            </Text>
+          </>
+        )}
       </View>
 
       <View style={styles.panel}>
@@ -1853,7 +2302,6 @@ function FriendsScreen({
   onSendRequest,
   onShareInvite,
   pokedFriendIds,
-  pokeNotice,
   repliedFriendIds,
 }: {
   aliveReplyNotices: IncomingPoke[];
@@ -1868,7 +2316,6 @@ function FriendsScreen({
   onSendRequest: (phone: string) => void;
   onShareInvite: () => void;
   pokedFriendIds: Set<string>;
-  pokeNotice: string;
   repliedFriendIds: Set<string>;
 }) {
   const [friendDraft, setFriendDraft] = useState('');
@@ -1876,16 +2323,6 @@ function FriendsScreen({
   const activeCount = friends.filter(isConfirmed).length;
   const confirmedFriends = friends.filter(isConfirmed);
   const pendingFriends = friends.filter((friend) => !isConfirmed(friend));
-  const pokedPendingFriends = pendingFriends.filter((friend) => pokedFriendIds.has(friend.id));
-  const pokedConfirmedFriends = confirmedFriends.filter((friend) => pokedFriendIds.has(friend.id));
-  const displayPokeNotice =
-    pokeNotice !== DEFAULT_POKE_NOTICE
-      ? pokeNotice
-      : pokedPendingFriends.length > 0
-        ? `今天已戳 ${formatFriendNames(pokedPendingFriends)}，等对方回一句：我还活着。`
-        : pokedConfirmedFriends.length > 0
-          ? `今天 ${formatFriendNames(pokedConfirmedFriends)} 已回馈：我还活着。`
-          : DEFAULT_POKE_NOTICE;
   const incomingRequests = friendRequests.filter((request) => request.direction === 'incoming');
   const outgoingRequests = friendRequests.filter((request) => request.direction === 'outgoing');
 
@@ -1939,7 +2376,11 @@ function FriendsScreen({
           {incomingRequests.map((request) => (
             <View key={request.id} style={styles.requestRow}>
               <View style={[styles.avatar, styles.requestAvatar, { backgroundColor: request.color }]}>
-                <Text style={styles.avatarText}>{request.name.slice(0, 1)}</Text>
+                {request.avatarUrl ? (
+                  <Image source={{ uri: request.avatarUrl }} style={styles.avatarImage} />
+                ) : (
+                  <Text style={styles.avatarText}>{request.name.slice(0, 1)}</Text>
+                )}
               </View>
               <Text style={styles.requestName}>{request.name}</Text>
               <Pressable style={styles.tinyButton} onPress={() => onAcceptRequest(request.id)}>
@@ -1956,7 +2397,11 @@ function FriendsScreen({
           {outgoingRequests.map((request) => (
             <View key={request.id} style={styles.requestRow}>
               <View style={[styles.avatar, styles.requestAvatar, { backgroundColor: request.color }]}>
-                <Text style={styles.avatarText}>{request.name.slice(0, 1)}</Text>
+                {request.avatarUrl ? (
+                  <Image source={{ uri: request.avatarUrl }} style={styles.avatarImage} />
+                ) : (
+                  <Text style={styles.avatarText}>{request.name.slice(0, 1)}</Text>
+                )}
               </View>
               <Text style={styles.requestName}>{request.name}</Text>
               <Text style={styles.requestStatus}>等待中</Text>
@@ -1975,10 +2420,10 @@ function FriendsScreen({
               </View>
               <View style={styles.pokeNoticeBody}>
                 <Text style={styles.requestName}>{poke.friendName}</Text>
-                <Text style={styles.pokeNoticeMeta}>戳了你一下：还活着没？</Text>
+                <Text style={styles.pokeNoticeMeta}>戳了你一下：还在不？</Text>
               </View>
               <Pressable style={styles.tinyButton} onPress={() => onReplyPoke(poke)}>
-                <Text style={styles.tinyButtonText}>我还活着</Text>
+                <Text style={styles.tinyButtonText}>我还在</Text>
               </Pressable>
             </View>
           ))}
@@ -1995,7 +2440,7 @@ function FriendsScreen({
               </View>
               <View style={styles.pokeNoticeBody}>
                 <Text style={styles.requestName}>{reply.friendName}</Text>
-                <Text style={styles.pokeNoticeMeta}>回了你一句：我还活着。</Text>
+                <Text style={styles.pokeNoticeMeta}>回了你一句：我还在。</Text>
               </View>
               <Pressable style={styles.tinyButtonGhost} onPress={() => onDismissReply(reply.id)}>
                 <Text style={styles.tinyButtonGhostText}>知道了</Text>
@@ -2007,7 +2452,7 @@ function FriendsScreen({
 
       <View style={styles.summaryCard}>
         <View>
-          <Text style={styles.mutedText}>好友存活雷达</Text>
+          <Text style={styles.mutedText}>好友存在雷达</Text>
           <Text style={styles.summaryNumber}>{activeCount}/{friends.length}</Text>
         </View>
         <View style={styles.summarySide}>
@@ -2040,7 +2485,7 @@ function FriendsScreen({
 
       {pendingFriends.length > 0 && (
         <View style={styles.friendSection}>
-          <SectionHead title="待确认是否活着" meta={String(pendingFriends.length)} />
+          <SectionHead title="待确认是否还在" meta={String(pendingFriends.length)} />
           {pendingFriends.map((friend) => (
             <FriendRow
               key={friend.id}
@@ -2054,9 +2499,6 @@ function FriendsScreen({
         </View>
       )}
 
-      <View style={styles.softNote}>
-        <Text style={styles.softNoteText}>{displayPokeNotice}</Text>
-      </View>
     </View>
   );
 }
@@ -2077,9 +2519,9 @@ function FriendRow({
   const translateX = useRef(new Animated.Value(0)).current;
   const [deleteOpen, setDeleteOpen] = useState(false);
   const confirmed = replied;
-  const statusBadgeText = confirmed ? '还活着' : poked ? '待确认' : '未知';
+  const statusBadgeText = confirmed ? '在' : poked ? '待确认' : '未知';
   const statusBadgeStyle = confirmed ? styles.badgeAlive : poked ? styles.badgePending : styles.badgeQuiet;
-  const moodText = poked && replied ? '对方回了一句：我还活着。' : poked ? '等对方回一句：我还活着。' : '还没有向你确认今天的状态。';
+  const interactionText = replied ? '好友回馈：我还在' : '你已问：还在不？ · 等待回馈';
   const lastSeenText = replied ? '今天反馈' : friend.lastSeen;
   const panResponder = useRef(
     PanResponder.create({
@@ -2125,7 +2567,11 @@ function FriendRow({
         style={[styles.friendCard, deleteOpen && styles.friendCardOpen, { transform: [{ translateX }] }]}
       >
         <View style={[styles.avatar, { backgroundColor: friend.color }]}>
-          <Text style={styles.avatarText}>{friend.name.slice(0, 1)}</Text>
+          {friend.avatarUrl ? (
+            <Image source={{ uri: friend.avatarUrl }} style={styles.avatarImage} />
+          ) : (
+            <Text style={styles.avatarText}>{friend.name.slice(0, 1)}</Text>
+          )}
         </View>
         <View style={styles.friendBody}>
           <View style={styles.friendTop}>
@@ -2133,7 +2579,14 @@ function FriendRow({
             <Text style={[styles.badge, statusBadgeStyle]}>{statusBadgeText}</Text>
           </View>
           <Text style={styles.friendPhone}>{friend.phoneMasked}</Text>
-          <Text style={styles.friendMood} numberOfLines={1}>{moodText}</Text>
+          {(poked || replied) && (
+            <View style={[styles.friendSignal, replied ? styles.friendSignalReplied : styles.friendSignalPending]}>
+              <View style={[styles.friendSignalDot, replied ? styles.friendSignalDotReplied : styles.friendSignalDotPending]} />
+              <Text style={[styles.friendSignalText, replied && styles.friendSignalTextReplied]} numberOfLines={1}>
+                {interactionText}
+              </Text>
+            </View>
+          )}
           <Text style={styles.friendMeta}>
             {friend.days} 天 · 连续 {friend.streak} 天 · {lastSeenText}
           </Text>
@@ -2150,7 +2603,9 @@ function TodosScreen({
   addTodo,
   draft,
   importantDraft,
-  softNoteText,
+  onSavePersonalMessages,
+  personalMessages,
+  encouragementText,
   setImportantDraft,
   setDraft,
   todos,
@@ -2160,13 +2615,87 @@ function TodosScreen({
   addTodo: () => void;
   draft: string;
   importantDraft: boolean;
-  softNoteText: string;
+  onSavePersonalMessages: (messages: PersonalMessage[]) => Promise<PersonalMessage[]>;
+  personalMessages: PersonalMessage[];
+  encouragementText: string;
   setImportantDraft: (value: boolean) => void;
   setDraft: (value: string) => void;
   todos: Todo[];
   toggleTodo: (id: string) => void;
   toggleTodoImportant: (id: string) => void;
 }) {
+  const [messageDrafts, setMessageDrafts] = useState<PersonalMessage[]>(personalMessages);
+  const [messagesExpanded, setMessagesExpanded] = useState(false);
+  const [messagesDirty, setMessagesDirty] = useState(false);
+  const [messageSaveState, setMessageSaveState] = useState<SaveState>('idle');
+  const [trusteeServiceOpen, setTrusteeServiceOpen] = useState(false);
+
+  useEffect(() => {
+    if (!messagesDirty) setMessageDrafts(personalMessages);
+  }, [messagesDirty, personalMessages]);
+
+  function addMessageRecipient() {
+    if (messageDrafts.length >= 3) return;
+    setMessageDrafts((current) => [
+      ...current,
+      { id: `draft-${Date.now()}-${current.length}`, message: '', recipientName: '' },
+    ]);
+    setMessagesDirty(true);
+    setMessageSaveState('idle');
+  }
+
+  function updateMessageDraft(id: string, field: 'message' | 'recipientName', value: string) {
+    setMessageDrafts((current) => current.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
+    setMessagesDirty(true);
+    setMessageSaveState('idle');
+  }
+
+  function removeMessageDraft(id: string) {
+    setMessageDrafts((current) => current.filter((item) => item.id !== id));
+    setMessagesDirty(true);
+    setMessageSaveState('idle');
+  }
+
+  async function saveMessageDrafts() {
+    if (!messagesDirty || messageDrafts.some((item) => !item.recipientName.trim() || !item.message.trim())) return;
+    setMessageSaveState('saving');
+    try {
+      const saved = await onSavePersonalMessages(messageDrafts);
+      setMessageDrafts(saved);
+      setMessagesDirty(false);
+      setMessageSaveState('saved');
+      setMessagesExpanded(false);
+      setTimeout(() => setMessageSaveState('idle'), 1400);
+    } catch (error) {
+      setMessageSaveState('idle');
+      Alert.alert('留言保存失败', error instanceof Error ? error.message : '请稍后再试');
+    }
+  }
+
+  function toggleMessagesExpanded() {
+    if (!messagesExpanded) {
+      setMessagesExpanded(true);
+      return;
+    }
+    if (!messagesDirty) {
+      setMessagesExpanded(false);
+      return;
+    }
+    Alert.alert('修改尚未保存', '请先保存留言，或放弃本次修改后收起。', [
+      { style: 'cancel', text: '继续编辑' },
+      {
+        onPress: () => {
+          setMessageDrafts(personalMessages);
+          setMessagesDirty(false);
+          setMessageSaveState('idle');
+          setMessagesExpanded(false);
+        },
+        style: 'destructive',
+        text: '放弃修改并收起',
+      },
+    ]);
+  }
+
   return (
     <View style={styles.stack}>
       <View style={styles.panel}>
@@ -2198,49 +2727,261 @@ function TodosScreen({
         </Pressable>
       </View>
 
-      <View style={styles.panel}>
-        {todos.map((todo) => (
-          <TodoRow
-            large
-            key={todo.id}
-            todo={todo}
-            onPress={() => toggleTodo(todo.id)}
-            onToggleImportant={() => toggleTodoImportant(todo.id)}
-          />
-        ))}
-      </View>
+      {todos.length > 0 ? (
+        <View style={styles.panel}>
+          {todos.map((todo) => (
+            <TodoRow
+              large
+              key={todo.id}
+              todo={todo}
+              onPress={() => toggleTodo(todo.id)}
+              onToggleImportant={() => toggleTodoImportant(todo.id)}
+            />
+          ))}
+        </View>
+      ) : null}
 
       <View style={styles.softNote}>
-        <Text style={styles.softNoteText}>{softNoteText}</Text>
+        <Text style={styles.dailyEncouragementLabel}>今日一句</Text>
+        <Text style={styles.softNoteText}>{encouragementText}</Text>
       </View>
+
+      <View style={styles.messagePanel}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: messagesExpanded }}
+          onPress={toggleMessagesExpanded}
+          style={styles.messageCollapseHeader}
+        >
+          <View>
+            <Text style={styles.sectionTitle}>我的留言</Text>
+            <Text style={styles.messageCollapsedHint}>
+              {messageDrafts.length > 0 ? `已设置 ${messageDrafts.length} 位留言对象` : '暂未添加留言对象'}
+            </Text>
+          </View>
+          <View style={styles.messageCollapseAction}>
+            <Text style={styles.messageCollapseText}>{messagesExpanded ? '收起' : '展开'}</Text>
+            <Text style={styles.messageCollapseIcon}>{messagesExpanded ? '⌃' : '⌄'}</Text>
+          </View>
+        </Pressable>
+
+        {messagesExpanded ? (
+          <>
+            <Text style={styles.settingHelp}>最多添加三位对象，并分别写下想对他们说的话。留言会跟随账号保存。</Text>
+            {messageDrafts.map((item, index) => (
+              <View key={item.id} style={styles.messageCard}>
+                <View style={styles.messageCardHead}>
+                  <Text style={styles.messageCardTitle}>留言对象 {index + 1}</Text>
+                  <Pressable onPress={() => removeMessageDraft(item.id)}>
+                    <Text style={styles.messageRemoveText}>移除</Text>
+                  </Pressable>
+                </View>
+                <TextInput
+                  maxLength={20}
+                  onChangeText={(value) => updateMessageDraft(item.id, 'recipientName', value)}
+                  placeholder="对象称呼，例如：妈妈"
+                  placeholderTextColor="#777268"
+                  style={styles.messageRecipientInput}
+                  value={item.recipientName}
+                />
+                <TextInput
+                  maxLength={600}
+                  multiline
+                  onChangeText={(value) => updateMessageDraft(item.id, 'message', value)}
+                  placeholder="写下想对这个人说的话"
+                  placeholderTextColor="#777268"
+                  style={styles.messageInput}
+                  textAlignVertical="top"
+                  value={item.message}
+                />
+              </View>
+            ))}
+            {messageDrafts.length < 3 && (
+              <Pressable style={styles.messageAddButton} onPress={addMessageRecipient}>
+                <Text style={styles.messageAddButtonText}>＋ 添加留言对象</Text>
+              </Pressable>
+            )}
+            {(messageDrafts.length > 0 || messagesDirty) && (
+              <View style={styles.messageActionRow}>
+                <Pressable
+                  disabled={
+                    !messagesDirty ||
+                    messageSaveState === 'saving' ||
+                    messageDrafts.some((item) => !item.recipientName.trim() || !item.message.trim())
+                  }
+                  onPress={saveMessageDrafts}
+                  style={[
+                    styles.messageSaveButton,
+                    messageSaveState === 'saved' && styles.addButtonSaved,
+                    (!messagesDirty ||
+                      messageSaveState === 'saving' ||
+                      messageDrafts.some((item) => !item.recipientName.trim() || !item.message.trim())) &&
+                      styles.disabledButton,
+                  ]}
+                >
+                  <Text style={styles.messageSaveButtonText}>
+                    {messageSaveState === 'saving' ? '保存中' : messageSaveState === 'saved' ? '已保存' : '保存并收起'}
+                  </Text>
+                </Pressable>
+                <Text style={styles.savedHint}>
+                  {messageDrafts.some((item) => !item.recipientName.trim() || !item.message.trim())
+                    ? '请把称呼和留言都填写完整。'
+                    : messagesDirty
+                      ? '修改尚未保存。'
+                      : '已保存。'}
+                </Text>
+              </View>
+            )}
+          </>
+        ) : null}
+      </View>
+
+      <Pressable
+        accessibilityHint="查看可托付事项并联系工作人员"
+        accessibilityLabel="安心托付"
+        accessibilityRole="button"
+        onPress={() => setTrusteeServiceOpen(true)}
+        style={({ pressed }) => [styles.trusteeEntryCard, pressed && styles.trusteeEntryCardPressed]}
+      >
+        <View style={styles.trusteeEntryMark}>
+          <Text style={styles.trusteeEntryMarkText}>托</Text>
+        </View>
+        <View style={styles.trusteeEntryBody}>
+          <View style={styles.trusteeEntryTitleRow}>
+            <Text style={styles.trusteeEntryTitle}>安心托付</Text>
+          </View>
+          <Text style={styles.trusteeEntryCopy}>重要物品、数字资料、账号设备、心愿留言和生活事务，都可以提前安心交代</Text>
+          <Text style={styles.trusteeEntryMeta}>先发邮件说明 · 工作人员回访核实</Text>
+        </View>
+        <Text style={styles.trusteeEntryArrow}>›</Text>
+      </Pressable>
+
+      <Modal animationType="slide" onRequestClose={() => setTrusteeServiceOpen(false)} visible={trusteeServiceOpen}>
+        <SafeAreaView style={styles.trusteePage}>
+          <View style={styles.trusteePageHeader}>
+            <View>
+              <Text style={styles.trusteePageEyebrow}>我的留言</Text>
+              <Text style={styles.trusteePageHeaderTitle}>安心托付</Text>
+            </View>
+            <Pressable
+              accessibilityLabel="关闭安心托付页面"
+              accessibilityRole="button"
+              hitSlop={12}
+              onPress={() => setTrusteeServiceOpen(false)}
+              style={styles.trusteeCloseButton}
+            >
+              <Text style={styles.trusteeCloseButtonText}>关闭</Text>
+            </Pressable>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.trusteePageContent} showsVerticalScrollIndicator={false}>
+            <View style={styles.trusteeHero}>
+              <View style={styles.trusteeStatusPill}>
+                <View style={styles.trusteeStatusDot} />
+                <Text style={styles.trusteeStatusText}>邮件登记 · 人工回访</Text>
+              </View>
+              <Text style={styles.trusteeHeroTitle}>把牵挂安放好，也让在意的人更安心</Text>
+              <Text style={styles.trusteeHeroCopy}>
+                有些事，不必一直放在心里。只要合法合规、权属清晰、风险可控，无论身在何处，都可以先告诉我们想托付的事。工作人员会认真倾听、逐项核实，再与你确认合适的安排。
+              </Text>
+              <View style={styles.trusteeOfflineNote}>
+                <Text style={styles.trusteeOfflineNoteText}>App 仅展示服务说明和联系邮箱，请勿在邮件中发送密码、验证码等敏感信息。</Text>
+              </View>
+            </View>
+
+            <View style={styles.trusteeSection}>
+              <Text style={styles.trusteeSectionKicker}>可托付事项</Text>
+              <Text style={styles.trusteeSectionTitle}>从数字生活，到身边的每一份牵挂</Text>
+              <Text style={styles.trusteeHeroCopy}>
+                可托付账号与设备处理、照片文件整理、个人物品和资料的保管移交、向亲友传达留言、纪念安排，以及其他清晰可执行的生活事务。
+              </Text>
+              <Text style={styles.trusteeOfflineNoteText}>涉及违法违规、权属不明、金融交易、代替本人作出重大决定或其他较高风险的事项不予承接。</Text>
+            </View>
+
+            <View style={styles.trusteeSection}>
+              <Text style={styles.trusteeSectionKicker}>服务流程</Text>
+              <Text style={styles.trusteeSectionTitle}>三步确认委托服务</Text>
+              {[
+                ['1', '邮件告知信息', '写明所在城市、联系方式和委托内容；如不便详细书写，可注明希望通过视频说明。'],
+                ['2', '等待回访核实', '工作人员与你联系，进一步核实委托需求。'],
+                ['3', '确认委托服务', '双方确认具体委托内容和后续服务安排。'],
+              ].map(([step, title, copy], index, items) => (
+                <View key={step} style={styles.trusteeStepRow}>
+                  <View style={styles.trusteeStepRail}>
+                    <View style={styles.trusteeStepNumber}>
+                      <Text style={styles.trusteeStepNumberText}>{step}</Text>
+                    </View>
+                    {index < items.length - 1 ? <View style={styles.trusteeStepLine} /> : null}
+                  </View>
+                  <View style={styles.trusteeStepBody}>
+                    <Text style={styles.trusteeStepTitle}>{title}</Text>
+                    <Text style={styles.trusteeStepCopy}>{copy}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.trusteeSafetyCard}>
+              <Text style={styles.trusteeSafetyLabel}>发送邮件前请注意</Text>
+              <Text style={styles.trusteeSafetyTitle}>敏感材料不要直接作为邮件附件</Text>
+              <Text style={styles.trusteeSafetyCopy}>
+                手持身份证原件录制的视频同时包含身份证和人脸信息，属于敏感个人信息。如需视频说明，请先在邮件中注明，等待工作人员回访并告知处理目的、必要性、保存期限和安全提交方式；取得你的单独同意后再按指定方式提供。请勿发送密码、验证码、私钥或助记词。
+              </Text>
+            </View>
+
+            <View style={styles.trusteeContactCard}>
+              <Text style={styles.trusteeContactLabel}>官方客服邮箱</Text>
+              <Text selectable style={styles.trusteeContactEmail}>{TRUSTEE_SERVICE_EMAIL}</Text>
+              <Text style={styles.trusteeContactHint}>点击下方按钮，将打开你手机里的邮件应用，并自动带入一份不含敏感信息的咨询模板。</Text>
+              <Pressable
+                accessibilityHint="打开系统邮件应用"
+                accessibilityLabel={`发送邮件至 ${TRUSTEE_SERVICE_EMAIL}`}
+                accessibilityRole="button"
+                onPress={openTrusteeServiceEmail}
+                style={({ pressed }) => [styles.trusteeContactButton, pressed && styles.trusteeContactButtonPressed]}
+              >
+                <Text style={styles.trusteeContactButtonText}>通过邮件说明委托意向</Text>
+                <Text style={styles.trusteeContactButtonArrow}>↗</Text>
+              </Pressable>
+            </View>
+
+            <Text style={styles.trusteeDisclaimer}>
+              发送邮件仅代表提交委托意向，不构成正式受理。是否承接及具体服务内容，以工作人员回访核实后的最终确认为准。
+            </Text>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
     </View>
   );
 }
 
 function ProfileScreen({
   aliveDays,
+  avatarUploading,
   checkedIn,
   diaryEntries,
   doneCount,
   isDemo,
+  onChangeAvatar,
   onSignOut,
   onUpdatePrivacy,
   onUpdateNickname,
-  onDeleteAppData,
   onRequestAccountDeletion,
   profile,
   signingOut,
   streak,
 }: {
   aliveDays: number;
+  avatarUploading: boolean;
   checkedIn: boolean;
   diaryEntries: DiaryEntry[];
   doneCount: number;
   isDemo: boolean;
+  onChangeAvatar: () => void;
   onSignOut: () => void;
   onUpdatePrivacy: (showStatusToFriends: boolean) => void;
   onUpdateNickname: (nickname: string) => Promise<void>;
-  onDeleteAppData: () => void;
   onRequestAccountDeletion: () => void;
   profile: Profile;
   signingOut: boolean;
@@ -2287,13 +3028,10 @@ function ProfileScreen({
   const [showAccount, setShowAccount] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showReminder, setShowReminder] = useState(false);
-  const [showWill, setShowWill] = useState(false);
-  const [willDraft, setWillDraft] = useState('');
-  const [savedWillDraft, setSavedWillDraft] = useState('');
-  const [willSaveState, setWillSaveState] = useState<SaveState>('idle');
   const [friendVisible, setFriendVisible] = useState(profile.showStatusToFriends);
   const [softReminder, setSoftReminder] = useState(false);
   const [reminderTime, setReminderTime] = useState('22:30');
+  const [reminderSaving, setReminderSaving] = useState(false);
 
   useEffect(() => {
     setNicknameDraft(profile.nickname);
@@ -2303,6 +3041,20 @@ function ProfileScreen({
   useEffect(() => {
     setFriendVisible(profile.showStatusToFriends);
   }, [profile.showStatusToFriends]);
+
+  useEffect(() => {
+    let active = true;
+    getReminderSettings()
+      .then((settings) => {
+        if (!active) return;
+        setSoftReminder(settings.enabled);
+        setReminderTime(settings.time);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function saveNickname() {
     const value = nicknameDraft.trim();
@@ -2324,30 +3076,89 @@ function ProfileScreen({
     onUpdatePrivacy(nextValue);
   }
 
-  function updateWillDraft(value: string) {
-    setWillDraft(value);
-    setWillSaveState('idle');
+  function showReminderPermissionAlert() {
+    Alert.alert('需要开启通知', '请在系统设置中允许“在否”发送通知，然后再开启每日提醒。', [
+      { text: '取消', style: 'cancel' },
+      { text: '前往设置', onPress: () => void Linking.openSettings() },
+    ]);
   }
 
-  function saveWillDraft() {
-    setSavedWillDraft(willDraft.trim());
-    setWillSaveState('saved');
-    setTimeout(() => setWillSaveState('idle'), 1400);
+  async function toggleSoftReminder() {
+    if (reminderSaving) return;
+    setReminderSaving(true);
+    try {
+      if (softReminder) {
+        const settings = await disableDailyReminder();
+        setSoftReminder(settings.enabled);
+        setReminderTime(settings.time);
+      } else {
+        const settings = await scheduleDailyReminder(reminderTime);
+        setSoftReminder(settings.enabled);
+        setReminderTime(settings.time);
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('通知权限')) {
+        showReminderPermissionAlert();
+      } else {
+        Alert.alert('提醒设置失败', error instanceof Error ? error.message : '请稍后再试。');
+      }
+    } finally {
+      setReminderSaving(false);
+    }
+  }
+
+  async function selectReminderTime(time: string) {
+    if (reminderSaving || time === reminderTime) return;
+    const previousTime = reminderTime;
+    setReminderTime(time);
+    if (!softReminder) return;
+
+    setReminderSaving(true);
+    try {
+      const settings = await scheduleDailyReminder(time);
+      setReminderTime(settings.time);
+    } catch (error) {
+      setReminderTime(previousTime);
+      if (error instanceof Error && error.message.includes('通知权限')) {
+        showReminderPermissionAlert();
+      } else {
+        Alert.alert('提醒时间保存失败', error instanceof Error ? error.message : '请稍后再试。');
+      }
+    } finally {
+      setReminderSaving(false);
+    }
   }
 
   return (
     <View style={styles.stack}>
       <View style={styles.profileCard}>
-        <View style={[styles.profileAvatar, { backgroundColor: profile.avatarColor }]}>
-          <Text style={styles.avatarText}>{profile.nickname.slice(0, 1)}</Text>
-        </View>
+        <Pressable
+          accessibilityLabel="更换头像"
+          disabled={avatarUploading}
+          onPress={onChangeAvatar}
+          style={[styles.profileAvatar, { backgroundColor: profile.avatarColor }]}
+        >
+          {profile.avatarUrl ? (
+            <Image source={{ uri: profile.avatarUrl }} style={styles.profileAvatarImage} />
+          ) : (
+            <Text style={styles.avatarText}>{profile.nickname.slice(0, 1)}</Text>
+          )}
+          {avatarUploading && (
+            <View style={styles.avatarLoadingOverlay}>
+              <ActivityIndicator color={colors.text} size="small" />
+            </View>
+          )}
+        </Pressable>
+        <Pressable disabled={avatarUploading} onPress={onChangeAvatar}>
+          <Text style={styles.profileAvatarHint}>{avatarUploading ? '头像上传中…' : '点击更换头像'}</Text>
+        </Pressable>
         <Text style={styles.profileName}>{profile.nickname}</Text>
         <Text style={styles.profilePhone}>{profile.phoneMasked}</Text>
-        <Text style={styles.mutedText}>{checkedIn ? '今天已确认活着' : '今天还没出现'}</Text>
+        <Text style={styles.mutedText}>{checkedIn ? '今天已确认还在' : '今天还没出现'}</Text>
         <View style={styles.profileStats}>
-          <ProfileStat label="累计存活" value={`${aliveDays} 天`} valueColor={colors.green} />
-          <ProfileStat label="连续存活" value={`${streak} 天`} valueColor={colors.yellow} />
-          <ProfileStat label="今天要做的" value={`${doneCount} 件`} valueColor={colors.blue} />
+          <ProfileStat label="累计存在" value={`${aliveDays} 天`} valueColor={colors.green} />
+          <ProfileStat label="连续存在" value={`${streak} 天`} valueColor={colors.yellow} />
+          <ProfileStat label="今天已做的" value={`${doneCount} 件`} valueColor={colors.blue} />
         </View>
       </View>
 
@@ -2442,8 +3253,21 @@ function ProfileScreen({
                 <View style={[styles.switchThumb, friendVisible && styles.switchThumbActive]} />
               </Pressable>
             </View>
-            <Pressable onPress={() => Alert.alert('隐私政策', '隐私政策已整理在 PRIVACY_POLICY.md 和 privacy.html，正式上架前需要发布为可访问网页链接。')}>
+            <Pressable onPress={() => void openExternalUrl(PRIVACY_POLICY_URL, '隐私政策')}>
               <Text style={styles.linkText}>查看隐私政策</Text>
+            </Pressable>
+            <Pressable onPress={() => void openExternalUrl(TERMS_OF_SERVICE_URL, '用户协议')}>
+              <Text style={styles.linkText}>查看用户协议</Text>
+            </Pressable>
+            <Pressable onPress={() => void openExternalUrl(REGISTRATION_AGREEMENT_URL, '注册协议')}>
+              <Text style={styles.linkText}>查看注册协议</Text>
+            </Pressable>
+            <Pressable style={[styles.settingItem, styles.accountDeleteItem]} onPress={onRequestAccountDeletion}>
+              <View>
+                <Text style={styles.accountDeleteText}>注销账户</Text>
+                <Text style={styles.accountDeleteMeta}>二次确认后立即停用，通常 7 天内彻底删除</Text>
+              </View>
+              <Text style={styles.settingArrow}>›</Text>
             </Pressable>
           </View>
         )}
@@ -2457,80 +3281,43 @@ function ProfileScreen({
             <View style={styles.toggleRow}>
               <View style={styles.toggleTextGroup}>
                 <Text style={styles.toggleTitle}>轻提醒</Text>
-                <Text style={styles.settingHelp}>{softReminder ? `每天 ${reminderTime} 提醒你确认活着。` : '打开后，每天到点提醒你确认活着。'}</Text>
+                <Text style={styles.settingHelp}>{softReminder ? `每天 ${reminderTime} 提醒你确认还在。` : '打开后，每天到点提醒你确认还在。'}</Text>
               </View>
               <Pressable
                 accessibilityRole="switch"
                 accessibilityState={{ checked: softReminder }}
-                onPress={() => setSoftReminder((current) => !current)}
-                style={[styles.switchTrack, softReminder && styles.switchTrackActive]}
+                disabled={reminderSaving}
+                onPress={() => void toggleSoftReminder()}
+                style={[styles.switchTrack, softReminder && styles.switchTrackActive, reminderSaving && styles.disabledButton]}
               >
                 <View style={[styles.switchThumb, softReminder && styles.switchThumbActive]} />
               </Pressable>
             </View>
             <View style={styles.timeChipRow}>
               {['21:30', '22:30', '23:00'].map((time) => (
-                <Pressable key={time} style={[styles.timeChip, reminderTime === time && styles.timeChipActive]} onPress={() => setReminderTime(time)}>
+                <Pressable
+                  disabled={reminderSaving}
+                  key={time}
+                  style={[styles.timeChip, reminderTime === time && styles.timeChipActive, reminderSaving && styles.disabledButton]}
+                  onPress={() => void selectReminderTime(time)}
+                >
                   <Text style={[styles.timeChipText, reminderTime === time && styles.timeChipTextActive]}>{time}</Text>
                 </Pressable>
               ))}
             </View>
-            <Text style={styles.savedHint}>正式版会接入 iOS/Android 系统通知权限。</Text>
+            <Text style={styles.savedHint}>
+              {reminderSaving
+                ? '正在保存系统提醒…'
+                : softReminder
+                  ? `系统通知已开启，每天 ${reminderTime} 提醒。`
+                  : '开启后会申请系统通知权限，并按所选时间每天提醒。'}
+            </Text>
           </View>
         )}
 
         <Pressable disabled={signingOut} style={[styles.settingItem, signingOut && styles.disabledButton]} onPress={onSignOut}>
           <Text style={styles.settingText}>{signingOut ? '退出中...' : isDemo ? '退出演示模式' : '退出登录'}</Text>
         </Pressable>
-        <Pressable style={[styles.settingItem, styles.dangerItem]} onPress={onDeleteAppData}>
-          <Text style={styles.dangerText}>删除本应用数据</Text>
-        </Pressable>
-        <Pressable style={[styles.settingItem, styles.accountDeleteItem]} onPress={onRequestAccountDeletion}>
-          <View>
-            <Text style={styles.accountDeleteText}>注销账户</Text>
-            <Text style={styles.accountDeleteMeta}>二次确认后退出登录，个人信息进入删除流程</Text>
-          </View>
-          <Text style={styles.settingArrow}>›</Text>
-        </Pressable>
-
-        <Pressable style={styles.willEntry} onPress={() => setShowWill((current) => !current)}>
-          <View>
-            <Text style={styles.willEntryTitle}>我的遗言</Text>
-            <Text style={styles.willEntryMeta}>重要内容，本机草稿</Text>
-          </View>
-          <Text style={styles.willEntryArrow}>{showWill ? '⌃' : '⌄'}</Text>
-        </Pressable>
-        {showWill && (
-          <View style={styles.willPanel}>
-            <Text style={styles.settingHelp}>正式版需要单独做加密、二次确认和紧急联系人机制。现在先作为本机草稿。</Text>
-            <TextInput
-              maxLength={600}
-              multiline
-              onChangeText={updateWillDraft}
-              placeholder="留给重要的人，或留给未来的自己。"
-              placeholderTextColor="#777268"
-              style={styles.willInput}
-              textAlignVertical="top"
-              value={willDraft}
-            />
-            <View style={styles.willActionRow}>
-              <Pressable
-                disabled={willDraft.trim() === savedWillDraft.trim()}
-                onPress={saveWillDraft}
-                style={[
-                  styles.willSaveButton,
-                  willSaveState === 'saved' && styles.addButtonSaved,
-                  willDraft.trim() === savedWillDraft.trim() && styles.disabledButton,
-                ]}
-              >
-                <Text style={styles.willSaveButtonText}>{willSaveState === 'saved' ? '已保存' : '保存'}</Text>
-              </Pressable>
-              <Text style={styles.savedHint}>
-                {savedWillDraft.trim() ? '已保存为本机草稿。' : willDraft.trim() ? '还没保存。' : '还没有写。'}
-              </Text>
-            </View>
-          </View>
-        )}
       </View>
     </View>
   );
@@ -2763,6 +3550,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   launch: {
+    alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
     padding: 22,
@@ -2771,6 +3559,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   authLaunch: {
+    alignItems: 'center',
     flexGrow: 1,
     justifyContent: 'center',
     padding: 22,
@@ -2781,7 +3570,9 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 32,
     borderWidth: 1,
+    maxWidth: 560,
     padding: 24,
+    width: '100%',
   },
   launchKicker: {
     color: colors.green,
@@ -2799,6 +3590,77 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 24,
     marginBottom: 20,
+  },
+  authAgreementRow: {
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.025)',
+    borderColor: colors.line,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 16,
+    padding: 12,
+  },
+  authAgreementText: {
+    color: colors.muted,
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 20,
+  },
+  authAgreementLink: {
+    color: colors.green,
+    fontWeight: '900',
+  },
+  biometricLoginButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(105, 184, 255, 0.1)',
+    borderColor: 'rgba(105, 184, 255, 0.32)',
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'center',
+    marginTop: 10,
+    minHeight: 48,
+    paddingHorizontal: 14,
+  },
+  biometricLoginIcon: {
+    color: colors.blue,
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  biometricLoginText: {
+    color: colors.blue,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  authModeTabs: {
+    backgroundColor: colors.panel2,
+    borderRadius: 16,
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 14,
+    padding: 4,
+  },
+  authModeButton: {
+    alignItems: 'center',
+    borderRadius: 12,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 40,
+    paddingHorizontal: 8,
+  },
+  authModeButtonActive: {
+    backgroundColor: colors.green,
+  },
+  authModeText: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  authModeTextActive: {
+    color: '#10120f',
   },
   authInput: {
     backgroundColor: colors.panel2,
@@ -2840,6 +3702,47 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 10,
     marginTop: 12,
+  },
+  authOptions: {
+    gap: 10,
+    marginTop: 16,
+  },
+  authOptionRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 44,
+  },
+  authCheckbox: {
+    alignItems: 'center',
+    borderColor: colors.line,
+    borderRadius: 7,
+    borderWidth: 1,
+    height: 24,
+    justifyContent: 'center',
+    width: 24,
+  },
+  authCheckboxChecked: {
+    backgroundColor: colors.green,
+    borderColor: colors.green,
+  },
+  authCheckboxText: {
+    color: '#10120f',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  authOptionCopy: {
+    flex: 1,
+  },
+  authOptionTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  authOptionMeta: {
+    color: colors.muted,
+    fontSize: 11,
+    marginTop: 2,
   },
   secondaryButton: {
     alignItems: 'center',
@@ -2890,11 +3793,14 @@ const styles = StyleSheet.create({
   },
   topbar: {
     alignItems: 'center',
+    alignSelf: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
+    maxWidth: 780,
     paddingHorizontal: 22,
     paddingTop: 16,
     paddingBottom: 14,
+    width: '100%',
   },
   date: {
     color: colors.green,
@@ -2925,8 +3831,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentInner: {
+    alignSelf: 'center',
+    maxWidth: 780,
     paddingHorizontal: 18,
     paddingBottom: 18,
+    width: '100%',
   },
   stack: {
     gap: 14,
@@ -3180,6 +4089,33 @@ const styles = StyleSheet.create({
     marginTop: 14,
     marginBottom: 8,
   },
+  journalSectionHead: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  journalSectionMeta: {
+    color: colors.soft,
+    fontSize: 12,
+    marginTop: 4,
+  },
+  journalEditButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(155,226,124,0.12)',
+    borderColor: 'rgba(155,226,124,0.32)',
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 36,
+    minWidth: 64,
+    paddingHorizontal: 14,
+  },
+  journalEditButtonText: {
+    color: colors.green,
+    fontSize: 13,
+    fontWeight: '900',
+  },
   journalInput: {
     backgroundColor: colors.panel2,
     borderColor: colors.line,
@@ -3191,6 +4127,11 @@ const styles = StyleSheet.create({
     minHeight: 92,
     paddingHorizontal: 13,
     paddingVertical: 12,
+  },
+  journalInputReadOnly: {
+    backgroundColor: 'rgba(255,255,255,0.025)',
+    borderColor: 'rgba(255,255,255,0.07)',
+    color: colors.muted,
   },
   journalHint: {
     color: colors.soft,
@@ -3511,7 +4452,12 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     height: 48,
     justifyContent: 'center',
+    overflow: 'hidden',
     width: 48,
+  },
+  avatarImage: {
+    height: '100%',
+    width: '100%',
   },
   avatarText: {
     color: '#141414',
@@ -3537,10 +4483,40 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 3,
   },
-  friendMood: {
-    color: colors.muted,
-    fontSize: 13,
+  friendSignal: {
+    alignItems: 'center',
+    borderRadius: 10,
+    flexDirection: 'row',
+    gap: 6,
     marginVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  friendSignalPending: {
+    backgroundColor: 'rgba(255,209,102,0.09)',
+  },
+  friendSignalReplied: {
+    backgroundColor: 'rgba(155,226,124,0.1)',
+  },
+  friendSignalDot: {
+    borderRadius: 999,
+    height: 5,
+    width: 5,
+  },
+  friendSignalDotPending: {
+    backgroundColor: colors.yellow,
+  },
+  friendSignalDotReplied: {
+    backgroundColor: colors.green,
+  },
+  friendSignalText: {
+    color: colors.yellow,
+    flex: 1,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  friendSignalTextReplied: {
+    color: colors.green,
   },
   friendMeta: {
     color: colors.soft,
@@ -3756,19 +4732,77 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   quoteCardInput: {
-    backgroundColor: colors.panel2,
-    borderColor: 'rgba(155,226,124,0.18)',
-    borderRadius: 18,
-    borderWidth: 1,
     color: colors.text,
-    fontSize: 17,
+    fontSize: 21,
+    fontWeight: '700',
+    lineHeight: 34,
+    minHeight: 114,
+    paddingHorizontal: 0,
+    paddingVertical: 10,
+  },
+  quoteSheet: {
+    backgroundColor: '#252b23',
+    borderColor: '#3e4c38',
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 18,
+    paddingTop: 17,
+    paddingBottom: 15,
+  },
+  quoteSheetHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  quoteSheetKicker: {
+    color: colors.green,
+    fontSize: 11,
     fontWeight: '800',
-    lineHeight: 27,
-    minHeight: 104,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    letterSpacing: 1,
+  },
+  quoteSheetMark: {
+    color: '#6e9860',
+    fontSize: 43,
+    lineHeight: 42,
+  },
+  quoteDisplayText: {
+    color: colors.text,
+    fontSize: 21,
+    fontWeight: '700',
+    lineHeight: 35,
+    minHeight: 114,
+    paddingVertical: 10,
+  },
+  quoteSheetFooter: {
+    alignItems: 'center',
+    borderTopColor: '#455241',
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingTop: 12,
+  },
+  quoteSheetMeta: {
+    color: '#a8b8a1',
+    flexShrink: 1,
+    fontSize: 11,
+  },
+  quoteSheetStatus: {
+    color: '#a8b8a1',
+    fontSize: 11,
+  },
+  quoteSheetStatusSaved: {
+    color: colors.green,
+    fontWeight: '800',
+  },
+  quoteHint: {
+    color: '#a8b49f',
+    fontSize: 12,
+    lineHeight: 19,
+    marginTop: 10,
   },
   quoteActionRow: {
+    alignItems: 'center',
     flexDirection: 'row',
     gap: 10,
     marginTop: 12,
@@ -3776,11 +4810,11 @@ const styles = StyleSheet.create({
   quoteActionButton: {
     alignItems: 'center',
     backgroundColor: colors.green,
-    borderRadius: 16,
-    height: 46,
+    borderRadius: 13,
+    flex: 1,
     justifyContent: 'center',
-    minWidth: 116,
-    paddingHorizontal: 18,
+    minHeight: 44,
+    paddingHorizontal: 12,
   },
   quoteActionButtonText: {
     color: '#10120f',
@@ -3788,11 +4822,10 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   quoteShuffleButton: {
-    backgroundColor: colors.panel2,
-    borderColor: colors.line,
-    borderWidth: 1,
-    flex: 1,
-    minWidth: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingHorizontal: 10,
   },
   shuffleButton: {
     alignItems: 'center',
@@ -3821,6 +4854,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
   },
+  dailyEncouragementLabel: {
+    color: colors.green,
+    fontSize: 12,
+    fontWeight: '900',
+    marginBottom: 5,
+  },
   profileCard: {
     alignItems: 'center',
     backgroundColor: '#29261f',
@@ -3835,8 +4874,30 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     height: 54,
     justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: 6,
+    overflow: 'hidden',
+    position: 'relative',
     width: 54,
+  },
+  profileAvatarImage: {
+    height: '100%',
+    width: '100%',
+  },
+  avatarLoadingOverlay: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.56)',
+    bottom: 0,
+    justifyContent: 'center',
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  profileAvatarHint: {
+    color: colors.green,
+    fontSize: 12,
+    fontWeight: '800',
+    marginBottom: 12,
   },
   profileName: {
     color: colors.text,
@@ -4053,14 +5114,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
   },
-  dangerItem: {
-    borderColor: 'rgba(255,107,107,0.25)',
-  },
-  dangerText: {
-    color: '#ff8b8b',
-    fontSize: 15,
-    fontWeight: '800',
-  },
   accountDeleteItem: {
     borderColor: 'rgba(255,31,61,0.32)',
     justifyContent: 'space-between',
@@ -4090,7 +5143,75 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
   },
-  willInput: {
+  messagePanel: {
+    backgroundColor: colors.panel,
+    borderColor: 'rgba(105, 184, 255, 0.28)',
+    borderRadius: 22,
+    borderWidth: 1,
+    gap: 12,
+    padding: 16,
+  },
+  messageCollapseHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: 48,
+  },
+  messageCollapseAction: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  messageCollapseText: {
+    color: colors.blue,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  messageCollapseIcon: {
+    color: colors.blue,
+    fontSize: 18,
+    fontWeight: '900',
+    lineHeight: 20,
+  },
+  messageCollapsedHint: {
+    color: colors.muted,
+    fontSize: 12,
+    marginTop: 4,
+  },
+  messageCard: {
+    backgroundColor: colors.panel2,
+    borderColor: colors.line,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 10,
+    padding: 12,
+  },
+  messageCardHead: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  messageCardTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  messageRemoveText: {
+    color: '#ff8b8b',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  messageRecipientInput: {
+    backgroundColor: colors.panel,
+    borderColor: colors.line,
+    borderRadius: 14,
+    borderWidth: 1,
+    color: colors.text,
+    fontSize: 14,
+    minHeight: 44,
+    paddingHorizontal: 12,
+  },
+  messageInput: {
     backgroundColor: colors.panel2,
     borderColor: colors.line,
     borderRadius: 16,
@@ -4098,7 +5219,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 14,
     lineHeight: 20,
-    minHeight: 140,
+    minHeight: 120,
     paddingHorizontal: 13,
     paddingVertical: 12,
   },
@@ -4132,60 +5253,387 @@ const styles = StyleSheet.create({
   timeChipTextActive: {
     color: colors.bg,
   },
-  willEntry: {
+  messageAddButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,31,61,0.13)',
-    borderColor: 'rgba(255,31,61,0.42)',
-    borderRadius: 20,
+    backgroundColor: 'rgba(105, 184, 255, 0.1)',
+    borderColor: 'rgba(105, 184, 255, 0.32)',
+    borderRadius: 16,
     borderWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    minHeight: 72,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    justifyContent: 'center',
+    minHeight: 44,
   },
-  willEntryTitle: {
-    color: colors.red,
-    fontSize: 17,
-    fontWeight: '900',
-  },
-  willEntryMeta: {
-    color: colors.muted,
-    fontSize: 12,
-    marginTop: 4,
-  },
-  willEntryArrow: {
-    color: colors.red,
+  messageAddButtonText: {
+    color: colors.blue,
     fontSize: 14,
     fontWeight: '900',
   },
-  willPanel: {
-    backgroundColor: colors.panel,
-    borderColor: 'rgba(255,31,61,0.32)',
-    borderRadius: 18,
-    borderWidth: 1,
-    gap: 12,
-    padding: 14,
-  },
-  willActionRow: {
+  messageActionRow: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
   },
-  willSaveButton: {
+  messageSaveButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,31,61,0.2)',
-    borderColor: 'rgba(255,31,61,0.48)',
+    backgroundColor: 'rgba(105, 184, 255, 0.18)',
+    borderColor: 'rgba(105, 184, 255, 0.42)',
     borderRadius: 14,
     borderWidth: 1,
     height: 42,
     justifyContent: 'center',
     paddingHorizontal: 20,
   },
-  willSaveButtonText: {
-    color: colors.red,
+  messageSaveButtonText: {
+    color: colors.blue,
     fontSize: 14,
     fontWeight: '900',
+  },
+  trusteeEntryCard: {
+    alignItems: 'center',
+    backgroundColor: '#25231f',
+    borderColor: 'rgba(255,209,102,0.28)',
+    borderRadius: 22,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 112,
+    padding: 16,
+  },
+  trusteeEntryCardPressed: {
+    opacity: 0.72,
+  },
+  trusteeEntryMark: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,209,102,0.13)',
+    borderColor: 'rgba(255,209,102,0.32)',
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 52,
+    justifyContent: 'center',
+    width: 52,
+  },
+  trusteeEntryMarkText: {
+    color: colors.yellow,
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  trusteeEntryBody: {
+    flex: 1,
+  },
+  trusteeEntryTitleRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  trusteeEntryTitle: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '900',
+  },
+  trusteeEntryBadge: {
+    backgroundColor: 'rgba(155,226,124,0.1)',
+    borderColor: 'rgba(155,226,124,0.24)',
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  trusteeEntryBadgeText: {
+    color: colors.green,
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  trusteeEntryCopy: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 7,
+  },
+  trusteeEntryMeta: {
+    color: colors.soft,
+    fontSize: 11,
+    marginTop: 5,
+  },
+  trusteeEntryArrow: {
+    color: colors.yellow,
+    fontSize: 30,
+    fontWeight: '400',
+    lineHeight: 32,
+  },
+  trusteePage: {
+    backgroundColor: colors.bg,
+    flex: 1,
+  },
+  trusteePageHeader: {
+    alignItems: 'center',
+    borderBottomColor: colors.line,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: 72,
+    paddingHorizontal: 20,
+  },
+  trusteePageEyebrow: {
+    color: colors.soft,
+    fontSize: 11,
+    fontWeight: '800',
+    marginBottom: 3,
+  },
+  trusteePageHeaderTitle: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  trusteeCloseButton: {
+    alignItems: 'center',
+    borderColor: colors.line,
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 38,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  trusteeCloseButtonText: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  trusteePageContent: {
+    gap: 16,
+    padding: 18,
+    paddingBottom: 44,
+  },
+  trusteeHero: {
+    backgroundColor: '#25231f',
+    borderColor: 'rgba(255,209,102,0.25)',
+    borderRadius: 28,
+    borderWidth: 1,
+    padding: 20,
+  },
+  trusteeStatusPill: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(155,226,124,0.08)',
+    borderColor: 'rgba(155,226,124,0.2)',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  trusteeStatusDot: {
+    backgroundColor: colors.green,
+    borderRadius: 999,
+    height: 6,
+    width: 6,
+  },
+  trusteeStatusText: {
+    color: colors.green,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  trusteeHeroTitle: {
+    color: colors.text,
+    fontSize: 29,
+    fontWeight: '900',
+    letterSpacing: -0.6,
+    lineHeight: 38,
+    marginTop: 18,
+    maxWidth: 280,
+  },
+  trusteeHeroCopy: {
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 23,
+    marginTop: 12,
+  },
+  trusteeOfflineNote: {
+    backgroundColor: 'rgba(132,197,244,0.07)',
+    borderColor: 'rgba(132,197,244,0.18)',
+    borderRadius: 16,
+    borderWidth: 1,
+    marginTop: 16,
+    padding: 12,
+  },
+  trusteeOfflineNoteText: {
+    color: colors.blue,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 19,
+  },
+  trusteeSection: {
+    backgroundColor: colors.panel,
+    borderColor: colors.line,
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 17,
+  },
+  trusteeSectionKicker: {
+    color: colors.yellow,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  trusteeSectionTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '900',
+    marginBottom: 14,
+    marginTop: 5,
+  },
+  trusteeScopeRow: {
+    alignItems: 'flex-start',
+    borderTopColor: colors.line,
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    paddingVertical: 13,
+  },
+  trusteeScopeMark: {
+    color: colors.yellow,
+    fontSize: 12,
+    fontWeight: '900',
+    paddingTop: 2,
+    width: 24,
+  },
+  trusteeScopeBody: {
+    flex: 1,
+  },
+  trusteeScopeTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  trusteeScopeCopy: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 5,
+  },
+  trusteeStepRow: {
+    alignItems: 'stretch',
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 74,
+  },
+  trusteeStepRail: {
+    alignItems: 'center',
+    width: 28,
+  },
+  trusteeStepNumber: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,209,102,0.12)',
+    borderColor: 'rgba(255,209,102,0.3)',
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 28,
+    justifyContent: 'center',
+    width: 28,
+  },
+  trusteeStepNumberText: {
+    color: colors.yellow,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  trusteeStepLine: {
+    backgroundColor: 'rgba(255,209,102,0.18)',
+    flex: 1,
+    width: 1,
+  },
+  trusteeStepBody: {
+    flex: 1,
+    paddingBottom: 16,
+    paddingTop: 3,
+  },
+  trusteeStepTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  trusteeStepCopy: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 5,
+  },
+  trusteeSafetyCard: {
+    backgroundColor: 'rgba(255,31,61,0.065)',
+    borderColor: 'rgba(255,107,120,0.24)',
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 17,
+  },
+  trusteeSafetyLabel: {
+    color: '#ff8b95',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  trusteeSafetyTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '900',
+    marginTop: 6,
+  },
+  trusteeSafetyCopy: {
+    color: '#c5b8b8',
+    fontSize: 13,
+    lineHeight: 21,
+    marginTop: 9,
+  },
+  trusteeContactCard: {
+    backgroundColor: '#22271f',
+    borderColor: 'rgba(155,226,124,0.28)',
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 17,
+  },
+  trusteeContactLabel: {
+    color: colors.green,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  trusteeContactEmail: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '900',
+    marginTop: 7,
+  },
+  trusteeContactHint: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 19,
+    marginTop: 9,
+  },
+  trusteeContactButton: {
+    alignItems: 'center',
+    backgroundColor: colors.green,
+    borderRadius: 16,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 16,
+    minHeight: 50,
+    paddingHorizontal: 16,
+  },
+  trusteeContactButtonPressed: {
+    opacity: 0.72,
+  },
+  trusteeContactButtonText: {
+    color: colors.bg,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  trusteeContactButtonArrow: {
+    color: colors.bg,
+    fontSize: 17,
+    fontWeight: '900',
+    marginLeft: 8,
+  },
+  trusteeDisclaimer: {
+    color: colors.soft,
+    fontSize: 11,
+    lineHeight: 18,
+    paddingHorizontal: 6,
+    textAlign: 'center',
   },
   toggleRow: {
     alignItems: 'center',
@@ -4239,6 +5687,7 @@ const styles = StyleSheet.create({
     padding: 22,
   },
   drawerBackdrop: {
+    alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.58)',
     flex: 1,
     justifyContent: 'flex-end',
@@ -4250,6 +5699,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 24,
     borderWidth: 1,
+    maxWidth: 680,
     padding: 16,
     width: '100%',
   },
@@ -4303,6 +5753,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1,
     maxHeight: '78%',
+    maxWidth: 680,
     padding: 16,
     width: '100%',
   },
@@ -4353,6 +5804,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 24,
     borderWidth: 1,
+    maxWidth: 680,
     padding: 14,
     width: '100%',
   },
@@ -4396,14 +5848,17 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   tabbar: {
+    alignSelf: 'center',
     backgroundColor: colors.bg,
     borderTopColor: colors.line,
     borderTopWidth: 1,
     flexDirection: 'row',
     gap: 8,
+    maxWidth: 780,
     paddingHorizontal: 14,
     paddingTop: 12,
     paddingBottom: Platform.OS === 'android' ? 28 : 16,
+    width: '100%',
   },
   tabButton: {
     alignItems: 'center',

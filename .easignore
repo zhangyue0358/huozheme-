@@ -1,0 +1,38 @@
+# Dependencies and generated output
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+*.tsbuildinfo
+
+# Generated native projects and local credentials
+/ios/
+/android/
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# Local environment and editor files
+.env
+.env*.local
+.DS_Store
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Existing build artifacts
+*.apk
+*.aab
+*.ipa
+
+# Backend and deployment material are not part of the mobile bundle
+domestic-backend/
+deploy/
+supabase/

@@ -1,0 +1,24 @@
+workflows:
+  ios-testflight-ipa:
+    name: iOS TestFlight IPA (EAS local)
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+    environment:
+      groups:
+        - expo_credentials
+      node: 22
+      xcode: 26.5
+      cocoapods: default
+    scripts:
+      - name: Install dependencies and type-check app
+        script: |
+          npm ci
+          npm run typecheck
+      - name: Build signed iOS IPA using existing Expo credentials
+        script: |
+          : "${EXPO_TOKEN:?Add EXPO_TOKEN as a secret in the expo_credentials group}"
+          npm install --global eas-cli
+          mkdir -p build/ios
+          eas build --platform ios --profile production --local --non-interactive --output "$CM_BUILD_DIR/build/ios/zaifou.ipa"
+    artifacts:
+      - build/ios/*.ipa

@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "活着吗",
+    "name": "在否",
     "slug": "huozhema-app",
-    "description": "一个轻量的每日确认与好友状态 App：确认今天还活着，记下心情、随笔、照片和今天最想做的三件事。",
+    "description": "一个轻量的每日确认与好友状态 App：确认今天还在，记下心情、随笔、照片和今天最想做的三件事。",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -17,17 +17,29 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "允许“活着吗”选择照片，保存到今天的随笔小记。",
+          "photosPermission": "允许“在否”选择头像或随笔照片。",
           "cameraPermission": false,
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "允许“在否”使用 Face ID 安全登录。"
+        }
+      ],
+      "expo-notifications"
     ],
     "ios": {
       "bundleIdentifier": "com.huozhema.app",
+      "buildNumber": "18",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "允许“活着吗”选择照片，保存到今天的随笔小记。"
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "允许“在否”使用 Face ID 安全登录。",
+        "NSPhotoLibraryUsageDescription": "允许“在否”选择头像或随笔照片。"
       },
+      "requireFullScreen": false,
       "supportsTablet": true
     },
     "android": {

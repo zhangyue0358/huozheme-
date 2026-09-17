@@ -1,5 +1,6 @@
 {
   "cli": {
+    "appVersionSource": "local",
     "version": ">= 16.0.0"
   },
   "build": {
@@ -10,7 +11,11 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_ENABLE_TEST_ACCOUNTS": "true"
+        "EXPO_PUBLIC_DOMESTIC_API_URL": "https://api.huozhema.senbeikeji.cn",
+        "EXPO_PUBLIC_APP_SHARE_URL": "https://huozhema.senbeikeji.cn/",
+        "EXPO_PUBLIC_PRIVACY_POLICY_URL": "https://huozhema.senbeikeji.cn/privacy.html",
+        "EXPO_PUBLIC_TERMS_OF_SERVICE_URL": "https://huozhema.senbeikeji.cn/terms.html",
+        "EXPO_PUBLIC_REGISTRATION_AGREEMENT_URL": "https://huozhema.senbeikeji.cn/registration.html"
       },
       "android": {
         "buildType": "apk"
@@ -19,11 +24,19 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_ENABLE_TEST_ACCOUNTS": "false"
+        "EXPO_PUBLIC_DOMESTIC_API_URL": "https://api.huozhema.senbeikeji.cn",
+        "EXPO_PUBLIC_APP_SHARE_URL": "https://huozhema.senbeikeji.cn/",
+        "EXPO_PUBLIC_PRIVACY_POLICY_URL": "https://huozhema.senbeikeji.cn/privacy.html",
+        "EXPO_PUBLIC_TERMS_OF_SERVICE_URL": "https://huozhema.senbeikeji.cn/terms.html",
+        "EXPO_PUBLIC_REGISTRATION_AGREEMENT_URL": "https://huozhema.senbeikeji.cn/registration.html"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6807607727"
+      }
+    }
   }
 }
