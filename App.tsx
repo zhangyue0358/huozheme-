@@ -1634,6 +1634,15 @@ function AuthScreen({
     }
   }
 
+  function openPasswordReset() {
+    if (loginMode === 'code') return;
+    setLoginMode('code');
+    setCode('');
+    setSentPhone('');
+    setPassword('');
+    setPasswordConfirmation('');
+  }
+
   async function completeSignIn(nextSession: DomesticSession) {
     if (rememberLogin && useBiometrics) {
       const authentication = await LocalAuthentication.authenticateAsync({
@@ -1733,17 +1742,13 @@ function AuthScreen({
               }}
               style={[styles.authModeButton, loginMode === 'password' && styles.authModeButtonActive]}
             >
-              <Text style={[styles.authModeText, loginMode === 'password' && styles.authModeTextActive]}>密码登录</Text>
+              <Text numberOfLines={1} style={[styles.authModeText, loginMode === 'password' && styles.authModeTextActive]}>密码登录</Text>
             </Pressable>
             <Pressable
-              onPress={() => {
-                setLoginMode('code');
-                setPassword('');
-                setPasswordConfirmation('');
-              }}
+              onPress={openPasswordReset}
               style={[styles.authModeButton, loginMode === 'code' && styles.authModeButtonActive]}
             >
-              <Text style={[styles.authModeText, loginMode === 'code' && styles.authModeTextActive]}>验证码设置密码</Text>
+              <Text numberOfLines={1} style={[styles.authModeText, loginMode === 'code' && styles.authModeTextActive]}>验证码设置密码</Text>
             </Pressable>
           </View>
 
@@ -1775,6 +1780,9 @@ function AuthScreen({
                 textContentType="password"
                 value={password}
               />
+              <Pressable accessibilityRole="button" onPress={openPasswordReset} style={styles.forgotPasswordButton}>
+                <Text style={styles.forgotPasswordText}>忘记密码？使用验证码重置</Text>
+              </Pressable>
               <Pressable
                 disabled={verifying || !acceptedAgreements || !phone.trim() || !password}
                 onPress={passwordLogin}
@@ -1857,7 +1865,7 @@ function AuthScreen({
               style={[styles.biometricLoginButton, (verifying || !acceptedAgreements) && styles.disabledButton]}
             >
               <Text style={styles.biometricLoginIcon}>◉</Text>
-              <Text style={styles.biometricLoginText}>使用 Face ID 登录（无需输入密码）</Text>
+              <Text numberOfLines={2} style={styles.biometricLoginText}>使用 Face ID 登录（无需输入密码）</Text>
             </Pressable>
           ) : null}
 
@@ -2142,7 +2150,7 @@ function TodayScreen({
 
       <View style={styles.panel}>
         <View style={styles.journalSectionHead}>
-          <View>
+          <View style={styles.sectionHeadCopy}>
             <Text style={styles.sectionTitle}>随笔小记</Text>
             <Text style={styles.journalSectionMeta}>
               {!checkedIn ? '确认后留下' : journalEditing ? '编辑完成后请保存' : '已保存，点击编辑可修改'}
@@ -2357,7 +2365,7 @@ function FriendsScreen({
       </View>
 
       <Pressable style={styles.inviteShareCard} onPress={onShareInvite}>
-        <View>
+        <View style={styles.inviteShareCopy}>
           <Text style={styles.inviteShareTitle}>分享给微信好友/朋友圈</Text>
           <Text style={styles.inviteShareMeta}>发一句邀请，让朋友也来确认今天。</Text>
         </View>
@@ -2575,7 +2583,7 @@ function FriendRow({
         </View>
         <View style={styles.friendBody}>
           <View style={styles.friendTop}>
-            <Text style={styles.friendName}>{friend.name}</Text>
+            <Text numberOfLines={1} style={styles.friendName}>{friend.name}</Text>
             <Text style={[styles.badge, statusBadgeStyle]}>{statusBadgeText}</Text>
           </View>
           <Text style={styles.friendPhone}>{friend.phoneMasked}</Text>
@@ -2753,7 +2761,7 @@ function TodosScreen({
           onPress={toggleMessagesExpanded}
           style={styles.messageCollapseHeader}
         >
-          <View>
+          <View style={styles.messageCollapseCopy}>
             <Text style={styles.sectionTitle}>我的留言</Text>
             <Text style={styles.messageCollapsedHint}>
               {messageDrafts.length > 0 ? `已设置 ${messageDrafts.length} 位留言对象` : '暂未添加留言对象'}
@@ -3152,7 +3160,7 @@ function ProfileScreen({
         <Pressable disabled={avatarUploading} onPress={onChangeAvatar}>
           <Text style={styles.profileAvatarHint}>{avatarUploading ? '头像上传中…' : '点击更换头像'}</Text>
         </Pressable>
-        <Text style={styles.profileName}>{profile.nickname}</Text>
+        <Text numberOfLines={1} style={styles.profileName}>{profile.nickname}</Text>
         <Text style={styles.profilePhone}>{profile.phoneMasked}</Text>
         <Text style={styles.mutedText}>{checkedIn ? '今天已确认还在' : '今天还没出现'}</Text>
         <View style={styles.profileStats}>
@@ -3176,14 +3184,33 @@ function ProfileScreen({
               key={item.date || `blank-${index}`}
               style={[
                 styles.calendarCell,
+                !item.date && styles.calendarCellBlank,
                 item.active && styles.calendarCellActive,
                 item.today && styles.calendarCellToday,
                 selectedDiaryDate === item.date && styles.calendarCellSelected,
               ]}
               onPress={() => setSelectedDiaryDate(item.date)}
             >
-              <Text style={[styles.calendarCellText, item.active && styles.calendarCellTextActive]}>{item.dayNumber || ''}</Text>
-              {item.active && <View style={styles.calendarDot} />}
+              <Text
+                maxFontSizeMultiplier={1.2}
+                style={[
+                  styles.calendarCellText,
+                  item.active && styles.calendarCellTextActive,
+                  selectedDiaryDate === item.date && styles.calendarCellTextSelected,
+                ]}
+              >
+                {item.dayNumber || ''}
+              </Text>
+              <View style={styles.calendarIndicatorSlot}>
+                {item.active && (
+                  <View
+                    style={[
+                      styles.calendarDot,
+                      selectedDiaryDate === item.date && styles.calendarDotSelected,
+                    ]}
+                  />
+                )}
+              </View>
             </Pressable>
           ))}
         </View>
@@ -3263,7 +3290,7 @@ function ProfileScreen({
               <Text style={styles.linkText}>查看注册协议</Text>
             </Pressable>
             <Pressable style={[styles.settingItem, styles.accountDeleteItem]} onPress={onRequestAccountDeletion}>
-              <View>
+              <View style={styles.accountDeleteCopy}>
                 <Text style={styles.accountDeleteText}>注销账户</Text>
                 <Text style={styles.accountDeleteMeta}>二次确认后立即停用，通常 7 天内彻底删除</Text>
               </View>
@@ -3347,8 +3374,8 @@ function DiaryEntryCard({ aliveDays, entry }: { aliveDays: number; entry: DiaryE
     <View style={styles.diaryEntry}>
       <Pressable style={styles.diaryEntryHead} onPress={() => setExpanded((current) => !current)}>
         <Text style={styles.diaryEntryDate}>{formatDiaryDate(entry.date)}</Text>
-        <Text style={styles.diaryEntryArrow}>{expanded ? '⌃' : '⌄'}</Text>
         <Text style={styles.diaryEntryMeta}>{entry.photoUrls.length} 图 · {entry.todos.filter((todo) => todo.done).length} 件事</Text>
+        <Text style={styles.diaryEntryArrow}>{expanded ? '⌃' : '⌄'}</Text>
       </Pressable>
       {expanded && (
         <View>
@@ -3369,8 +3396,8 @@ function DiaryEntryCard({ aliveDays, entry }: { aliveDays: number; entry: DiaryE
 function MetricCard({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
   return (
     <View style={styles.metricCard}>
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={[styles.metricValue, valueColor ? { color: valueColor } : null]}>{value}</Text>
+      <Text adjustsFontSizeToFit minimumFontScale={0.82} numberOfLines={1} style={styles.metricLabel}>{label}</Text>
+      <Text adjustsFontSizeToFit minimumFontScale={0.78} numberOfLines={1} style={[styles.metricValue, valueColor ? { color: valueColor } : null]}>{value}</Text>
     </View>
   );
 }
@@ -3402,8 +3429,8 @@ function TodoRow({
 function SectionHead({ meta, title }: { meta: string; title: string }) {
   return (
     <View style={styles.sectionHead}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <Text style={styles.sectionMeta}>{meta}</Text>
+      <Text numberOfLines={1} style={styles.sectionTitle}>{title}</Text>
+      <Text numberOfLines={1} style={styles.sectionMeta}>{meta}</Text>
     </View>
   );
 }
@@ -3411,8 +3438,8 @@ function SectionHead({ meta, title }: { meta: string; title: string }) {
 function ProfileStat({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
   return (
     <View style={styles.profileStat}>
-      <Text style={[styles.profileStatValue, valueColor ? { color: valueColor } : null]}>{value}</Text>
-      <Text style={styles.profileStatLabel}>{label}</Text>
+      <Text adjustsFontSizeToFit minimumFontScale={0.78} numberOfLines={1} style={[styles.profileStatValue, valueColor ? { color: valueColor } : null]}>{value}</Text>
+      <Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={1} style={styles.profileStatLabel}>{label}</Text>
     </View>
   );
 }
@@ -3447,7 +3474,7 @@ function TabButton({
           </View>
         )}
       </View>
-      <Text style={[styles.tabLabel, active && styles.tabTextActive]}>{label}</Text>
+      <Text numberOfLines={1} style={[styles.tabLabel, active && styles.tabTextActive]}>{label}</Text>
     </Pressable>
   );
 }
@@ -3562,16 +3589,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 22,
     paddingBottom: 120,
+    paddingHorizontal: 16,
+    paddingTop: 22,
   },
   launchCard: {
     backgroundColor: colors.panel,
     borderColor: colors.line,
     borderRadius: 32,
     borderWidth: 1,
-    maxWidth: 560,
-    padding: 24,
+    maxWidth: 520,
+    padding: 20,
     width: '100%',
   },
   launchKicker: {
@@ -3624,6 +3652,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     minHeight: 48,
     paddingHorizontal: 14,
+    paddingVertical: 10,
   },
   biometricLoginIcon: {
     color: colors.blue,
@@ -3632,8 +3661,11 @@ const styles = StyleSheet.create({
   },
   biometricLoginText: {
     color: colors.blue,
+    flexShrink: 1,
     fontSize: 14,
     fontWeight: '900',
+    lineHeight: 20,
+    textAlign: 'center',
   },
   authModeTabs: {
     backgroundColor: colors.panel2,
@@ -3656,8 +3688,10 @@ const styles = StyleSheet.create({
   },
   authModeText: {
     color: colors.muted,
+    flexShrink: 1,
     fontSize: 13,
     fontWeight: '800',
+    textAlign: 'center',
   },
   authModeTextActive: {
     color: '#10120f',
@@ -3672,6 +3706,18 @@ const styles = StyleSheet.create({
     height: 52,
     marginBottom: 12,
     paddingHorizontal: 14,
+  },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 12,
+    marginTop: -2,
+    paddingHorizontal: 2,
+    paddingVertical: 4,
+  },
+  forgotPasswordText: {
+    color: colors.green,
+    fontSize: 13,
+    fontWeight: '800',
   },
   phoneInputWrap: {
     alignItems: 'center',
@@ -3796,7 +3842,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    maxWidth: 780,
+    maxWidth: 680,
     paddingHorizontal: 22,
     paddingTop: 16,
     paddingBottom: 14,
@@ -3832,13 +3878,14 @@ const styles = StyleSheet.create({
   },
   contentInner: {
     alignSelf: 'center',
-    maxWidth: 780,
+    maxWidth: 680,
     paddingHorizontal: 18,
     paddingBottom: 18,
     width: '100%',
   },
   stack: {
     gap: 14,
+    width: '100%',
   },
   heroCard: {
     backgroundColor: '#22211e',
@@ -3847,7 +3894,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     minHeight: 300,
     overflow: 'visible',
-    padding: 24,
+    padding: 20,
   },
   heroCardChecked: {
     backgroundColor: '#1c2d24',
@@ -3858,14 +3905,16 @@ const styles = StyleSheet.create({
     gap: 10,
     justifyContent: 'space-between',
     marginBottom: 38,
+    position: 'relative',
   },
   pulseMark: {
     alignItems: 'center',
     backgroundColor: 'rgba(155,226,124,0.13)',
     borderRadius: 28,
-    height: 84,
+    flexShrink: 0,
+    height: 78,
     justifyContent: 'center',
-    width: 84,
+    width: 78,
   },
   pulseIcon: {
     color: colors.red,
@@ -3878,11 +3927,11 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(155,226,124,0.18)',
     borderRadius: 18,
     borderWidth: 1,
-    height: 84,
+    height: 78,
     justifyContent: 'center',
     paddingHorizontal: 12,
     paddingVertical: 9,
-    width: 150,
+    width: '100%',
   },
   archiveHead: {
     alignItems: 'center',
@@ -3918,9 +3967,11 @@ const styles = StyleSheet.create({
   weatherInlineDrawer: {
     alignItems: 'flex-end',
     alignSelf: 'flex-start',
-    minHeight: 84,
+    flex: 1,
+    maxWidth: 150,
+    minHeight: 78,
+    minWidth: 0,
     position: 'relative',
-    width: 150,
   },
   weatherInlineDrawerOpen: {
     zIndex: 5,
@@ -4018,7 +4069,7 @@ const styles = StyleSheet.create({
   },
   metricsGrid: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   metricCard: {
     backgroundColor: colors.panel,
@@ -4026,17 +4077,19 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     flex: 1,
-    padding: 14,
+    minWidth: 0,
+    padding: 12,
   },
   metricValue: {
     color: colors.text,
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: '800',
     marginTop: 8,
   },
   metricLabel: {
     color: colors.muted,
-    fontSize: 13,
+    fontSize: 12,
+    lineHeight: 17,
   },
   panel: {
     backgroundColor: colors.panel,
@@ -4048,17 +4101,25 @@ const styles = StyleSheet.create({
   sectionHead: {
     alignItems: 'center',
     flexDirection: 'row',
+    gap: 12,
     justifyContent: 'space-between',
     marginBottom: 12,
   },
   sectionTitle: {
     color: colors.text,
+    flexShrink: 1,
     fontSize: 16,
     fontWeight: '800',
   },
   sectionMeta: {
     color: colors.muted,
+    flexShrink: 1,
     fontSize: 13,
+    textAlign: 'right',
+  },
+  sectionHeadCopy: {
+    flex: 1,
+    minWidth: 0,
   },
   noteList: {
     gap: 8,
@@ -4092,6 +4153,7 @@ const styles = StyleSheet.create({
   journalSectionHead: {
     alignItems: 'center',
     flexDirection: 'row',
+    gap: 12,
     justifyContent: 'space-between',
     marginBottom: 12,
   },
@@ -4110,6 +4172,7 @@ const styles = StyleSheet.create({
     minHeight: 36,
     minWidth: 64,
     paddingHorizontal: 14,
+    flexShrink: 0,
   },
   journalEditButtonText: {
     color: colors.green,
@@ -4142,6 +4205,7 @@ const styles = StyleSheet.create({
   photoActionRow: {
     alignItems: 'center',
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
     marginTop: 12,
   },
@@ -4223,8 +4287,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     marginTop: 12,
-    minHeight: 40,
+    minHeight: 46,
     justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
   },
   diaryButtonText: {
     color: colors.green,
@@ -4232,6 +4298,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   todayActionRow: {
+    alignItems: 'stretch',
     flexDirection: 'row',
     gap: 10,
     marginTop: 12,
@@ -4246,14 +4313,16 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(155,226,124,0.32)',
     borderRadius: 14,
     borderWidth: 1,
-    minHeight: 40,
+    minHeight: 46,
     justifyContent: 'center',
     paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   shareButtonText: {
     color: colors.green,
     fontSize: 12,
     fontWeight: '900',
+    lineHeight: 18,
     textAlign: 'center',
   },
   todoRow: {
@@ -4266,6 +4335,7 @@ const styles = StyleSheet.create({
     gap: 10,
     minHeight: 46,
     paddingHorizontal: 12,
+    paddingVertical: 8,
     marginTop: 8,
   },
   todoRowImportant: {
@@ -4282,6 +4352,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     minHeight: 46,
+    minWidth: 0,
   },
   todoCheck: {
     color: colors.soft,
@@ -4295,6 +4366,8 @@ const styles = StyleSheet.create({
     color: colors.text,
     flex: 1,
     fontSize: 15,
+    lineHeight: 21,
+    minWidth: 0,
   },
   todoTextDone: {
     color: colors.muted,
@@ -4304,6 +4377,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 999,
     borderWidth: 1,
+    flexShrink: 0,
     paddingHorizontal: 9,
     paddingVertical: 6,
   },
@@ -4327,7 +4401,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: 'row',
     gap: 10,
-    padding: 16,
+    padding: 14,
   },
   searchText: {
     color: colors.muted,
@@ -4346,6 +4420,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     minHeight: 38,
+    minWidth: 0,
   },
   friendPhonePrefix: {
     color: colors.green,
@@ -4355,6 +4430,8 @@ const styles = StyleSheet.create({
   smallButton: {
     backgroundColor: colors.green,
     borderRadius: 14,
+    flexShrink: 0,
+    minHeight: 40,
     paddingHorizontal: 13,
     paddingVertical: 9,
   },
@@ -4369,23 +4446,31 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     flexDirection: 'row',
+    gap: 12,
     justifyContent: 'space-between',
     minHeight: 64,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
+  inviteShareCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
   inviteShareTitle: {
     color: colors.green,
     fontSize: 15,
     fontWeight: '900',
+    lineHeight: 21,
   },
   inviteShareMeta: {
     color: colors.muted,
     fontSize: 12,
+    lineHeight: 18,
     marginTop: 4,
   },
   inviteShareArrow: {
     color: colors.green,
+    flexShrink: 0,
     fontSize: 24,
     fontWeight: '900',
   },
@@ -4396,6 +4481,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     borderWidth: 1,
     flexDirection: 'row',
+    gap: 16,
     justifyContent: 'space-between',
     minHeight: 130,
     padding: 20,
@@ -4412,6 +4498,7 @@ const styles = StyleSheet.create({
   },
   summarySide: {
     alignItems: 'flex-end',
+    flexShrink: 1,
     gap: 6,
   },
   summaryPending: {
@@ -4429,8 +4516,8 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 12,
-    padding: 13,
+    gap: 10,
+    padding: 12,
   },
   friendSwipeWrap: {
     overflow: 'hidden',
@@ -4450,10 +4537,11 @@ const styles = StyleSheet.create({
   avatar: {
     alignItems: 'center',
     borderRadius: 18,
-    height: 48,
+    flexShrink: 0,
+    height: 44,
     justifyContent: 'center',
     overflow: 'hidden',
-    width: 48,
+    width: 44,
   },
   avatarImage: {
     height: '100%',
@@ -4466,6 +4554,7 @@ const styles = StyleSheet.create({
   },
   friendBody: {
     flex: 1,
+    minWidth: 0,
   },
   friendTop: {
     alignItems: 'center',
@@ -4475,8 +4564,10 @@ const styles = StyleSheet.create({
   },
   friendName: {
     color: colors.text,
+    flex: 1,
     fontSize: 15,
     fontWeight: '800',
+    minWidth: 0,
   },
   friendPhone: {
     color: colors.soft,
@@ -4528,8 +4619,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     flexShrink: 0,
-    minWidth: 78,
-    paddingHorizontal: 10,
+    minWidth: 64,
+    paddingHorizontal: 8,
     paddingVertical: 8,
   },
   pokeButtonDone: {
@@ -4565,6 +4656,7 @@ const styles = StyleSheet.create({
   },
   badge: {
     borderRadius: 99,
+    flexShrink: 0,
     fontSize: 11,
     overflow: 'hidden',
     paddingHorizontal: 8,
@@ -4604,6 +4696,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '800',
+    minWidth: 0,
   },
   requestStatus: {
     color: colors.muted,
@@ -4636,6 +4729,7 @@ const styles = StyleSheet.create({
   },
   pokeNoticeBody: {
     flex: 1,
+    minWidth: 0,
   },
   pokeNoticeMeta: {
     color: colors.muted,
@@ -4645,6 +4739,7 @@ const styles = StyleSheet.create({
   tinyButton: {
     backgroundColor: colors.green,
     borderRadius: 12,
+    flexShrink: 0,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -4657,6 +4752,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(155,226,124,0.42)',
     borderRadius: 12,
     borderWidth: 1,
+    flexShrink: 0,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -4678,6 +4774,7 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   addRow: {
+    alignItems: 'center',
     flexDirection: 'row',
     gap: 10,
   },
@@ -4710,6 +4807,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     flex: 1,
     height: 46,
+    minWidth: 0,
     paddingHorizontal: 14,
   },
   addButton: {
@@ -4718,6 +4816,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     height: 46,
     justifyContent: 'center',
+    flexShrink: 0,
     minWidth: 48,
     paddingHorizontal: 12,
   },
@@ -4756,6 +4855,7 @@ const styles = StyleSheet.create({
   },
   quoteSheetKicker: {
     color: colors.green,
+    flexShrink: 1,
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 1,
@@ -4789,6 +4889,7 @@ const styles = StyleSheet.create({
   },
   quoteSheetStatus: {
     color: '#a8b8a1',
+    flexShrink: 0,
     fontSize: 11,
   },
   quoteSheetStatusSaved: {
@@ -4866,7 +4967,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 32,
     borderWidth: 1,
-    padding: 24,
+    padding: 20,
   },
   profileAvatar: {
     alignItems: 'center',
@@ -4904,6 +5005,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '900',
     marginBottom: 6,
+    maxWidth: '100%',
   },
   profilePhone: {
     color: colors.soft,
@@ -4912,7 +5014,7 @@ const styles = StyleSheet.create({
   },
   profileStats: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
     marginTop: 22,
     width: '100%',
   },
@@ -4923,17 +5025,21 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     flex: 1,
+    minWidth: 0,
+    paddingHorizontal: 4,
     paddingVertical: 11,
   },
   profileStatValue: {
     color: colors.text,
     fontSize: 20,
     fontWeight: '900',
+    maxWidth: '100%',
   },
   profileStatLabel: {
     color: colors.muted,
-    fontSize: 12,
+    fontSize: 11,
     marginTop: 3,
+    maxWidth: '100%',
   },
   heatmap: {
     flexDirection: 'row',
@@ -4950,30 +5056,36 @@ const styles = StyleSheet.create({
   },
   weekRow: {
     flexDirection: 'row',
-    gap: 6,
+    justifyContent: 'space-between',
   },
   weekText: {
     color: colors.soft,
-    flex: 1,
     fontSize: 12,
     fontWeight: '800',
+    lineHeight: 18,
     textAlign: 'center',
+    width: '13%',
   },
   monthCalendar: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    justifyContent: 'space-between',
+    rowGap: 8,
   },
   calendarCell: {
     alignItems: 'center',
-    aspectRatio: 1,
     backgroundColor: colors.panel2,
     borderColor: colors.line,
     borderRadius: 12,
     borderWidth: 1,
-    justifyContent: 'center',
-    position: 'relative',
-    width: '12.5%',
+    height: 42,
+    justifyContent: 'flex-start',
+    paddingTop: 5,
+    width: '13%',
+  },
+  calendarCellBlank: {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
   },
   calendarCellActive: {
     backgroundColor: 'rgba(155,226,124,0.16)',
@@ -4991,17 +5103,28 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 13,
     fontWeight: '800',
+    lineHeight: 18,
   },
   calendarCellTextActive: {
     color: colors.text,
   },
+  calendarCellTextSelected: {
+    color: colors.bg,
+  },
+  calendarIndicatorSlot: {
+    alignItems: 'center',
+    height: 8,
+    justifyContent: 'center',
+    marginTop: 3,
+  },
   calendarDot: {
     backgroundColor: colors.green,
     borderRadius: 999,
-    bottom: 5,
-    height: 4,
-    position: 'absolute',
-    width: 4,
+    height: 5,
+    width: 5,
+  },
+  calendarDotSelected: {
+    backgroundColor: colors.bg,
   },
   calendarDivider: {
     backgroundColor: colors.line,
@@ -5045,7 +5168,7 @@ const styles = StyleSheet.create({
   diaryEntryHead: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
     justifyContent: 'space-between',
     marginBottom: 10,
   },
@@ -5057,8 +5180,10 @@ const styles = StyleSheet.create({
   },
   diaryEntryMeta: {
     color: colors.soft,
+    flexShrink: 1,
     fontSize: 11,
     fontWeight: '800',
+    textAlign: 'right',
   },
   diaryEntryArrow: {
     color: colors.green,
@@ -5119,6 +5244,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     minHeight: 68,
   },
+  accountDeleteCopy: {
+    flex: 1,
+    marginRight: 12,
+    minWidth: 0,
+  },
   accountDeleteText: {
     color: '#ff6b78',
     fontSize: 15,
@@ -5127,6 +5257,7 @@ const styles = StyleSheet.create({
   accountDeleteMeta: {
     color: colors.muted,
     fontSize: 12,
+    lineHeight: 18,
     marginTop: 4,
   },
   settingPanel: {
@@ -5139,7 +5270,6 @@ const styles = StyleSheet.create({
   },
   settingHelp: {
     color: colors.muted,
-    flex: 1,
     fontSize: 13,
     lineHeight: 20,
   },
@@ -5154,12 +5284,18 @@ const styles = StyleSheet.create({
   messageCollapseHeader: {
     alignItems: 'center',
     flexDirection: 'row',
+    gap: 12,
     justifyContent: 'space-between',
     minHeight: 48,
+  },
+  messageCollapseCopy: {
+    flex: 1,
+    minWidth: 0,
   },
   messageCollapseAction: {
     alignItems: 'center',
     flexDirection: 'row',
+    flexShrink: 0,
     gap: 6,
   },
   messageCollapseText: {
@@ -5225,7 +5361,10 @@ const styles = StyleSheet.create({
   },
   savedHint: {
     color: colors.soft,
+    flex: 1,
     fontSize: 12,
+    lineHeight: 18,
+    minWidth: 0,
   },
   timeChipRow: {
     flexDirection: 'row',
@@ -5268,7 +5407,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   messageActionRow: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flexDirection: 'row',
     gap: 12,
   },
@@ -5281,6 +5420,7 @@ const styles = StyleSheet.create({
     height: 42,
     justifyContent: 'center',
     paddingHorizontal: 20,
+    flexShrink: 0,
   },
   messageSaveButtonText: {
     color: colors.blue,
@@ -5294,9 +5434,9 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
     minHeight: 112,
-    padding: 16,
+    padding: 14,
   },
   trusteeEntryCardPressed: {
     opacity: 0.72,
@@ -5307,9 +5447,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,209,102,0.32)',
     borderRadius: 18,
     borderWidth: 1,
-    height: 52,
+    flexShrink: 0,
+    height: 48,
     justifyContent: 'center',
-    width: 52,
+    width: 48,
   },
   trusteeEntryMarkText: {
     color: colors.yellow,
@@ -5318,6 +5459,7 @@ const styles = StyleSheet.create({
   },
   trusteeEntryBody: {
     flex: 1,
+    minWidth: 0,
   },
   trusteeEntryTitleRow: {
     alignItems: 'center',
@@ -5356,6 +5498,7 @@ const styles = StyleSheet.create({
   },
   trusteeEntryArrow: {
     color: colors.yellow,
+    flexShrink: 0,
     fontSize: 30,
     fontWeight: '400',
     lineHeight: 32,
@@ -5370,8 +5513,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    maxWidth: 680,
     minHeight: 72,
     paddingHorizontal: 20,
+    alignSelf: 'center',
+    width: '100%',
   },
   trusteePageEyebrow: {
     color: colors.soft,
@@ -5399,9 +5545,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   trusteePageContent: {
+    alignSelf: 'center',
     gap: 16,
+    maxWidth: 680,
     padding: 18,
     paddingBottom: 44,
+    width: '100%',
   },
   trusteeHero: {
     backgroundColor: '#25231f',
@@ -5440,7 +5589,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.6,
     lineHeight: 38,
     marginTop: 18,
-    maxWidth: 280,
+    maxWidth: 500,
   },
   trusteeHeroCopy: {
     color: colors.muted,
@@ -5594,6 +5743,7 @@ const styles = StyleSheet.create({
   },
   trusteeContactEmail: {
     color: colors.text,
+    flexShrink: 1,
     fontSize: 18,
     fontWeight: '900',
     marginTop: 7,
@@ -5699,7 +5849,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 24,
     borderWidth: 1,
-    maxWidth: 680,
+    maxWidth: 520,
     padding: 16,
     width: '100%',
   },
@@ -5753,7 +5903,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1,
     maxHeight: '78%',
-    maxWidth: 680,
+    maxWidth: 560,
     padding: 16,
     width: '100%',
   },
@@ -5804,7 +5954,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 24,
     borderWidth: 1,
-    maxWidth: 680,
+    maxWidth: 520,
     padding: 14,
     width: '100%',
   },
@@ -5853,9 +6003,9 @@ const styles = StyleSheet.create({
     borderTopColor: colors.line,
     borderTopWidth: 1,
     flexDirection: 'row',
-    gap: 8,
-    maxWidth: 780,
-    paddingHorizontal: 14,
+    gap: 6,
+    maxWidth: 680,
+    paddingHorizontal: 12,
     paddingTop: 12,
     paddingBottom: Platform.OS === 'android' ? 28 : 16,
     width: '100%',
@@ -5867,6 +6017,7 @@ const styles = StyleSheet.create({
     gap: 4,
     height: 54,
     justifyContent: 'center',
+    minWidth: 0,
   },
   tabButtonActive: {
     backgroundColor: colors.green,

@@ -3,6 +3,13 @@ workflows:
     name: iOS TestFlight IPA (EAS local)
     instance_type: mac_mini_m2
     max_build_duration: 120
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: codemagic/ios-build-20-20260920
+          include: true
+          source: true
     environment:
       groups:
         - expo_credentials
