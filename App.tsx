@@ -2224,7 +2224,7 @@ function TodayScreen({
         <View style={styles.quoteSheet}>
           <View style={styles.quoteSheetHeader}>
             <Text style={styles.quoteSheetKicker}>TO MYSELF · {quoteDate.slice(5).replace('-', '.')}</Text>
-            <Text style={styles.quoteSheetMark}>“</Text>
+            <Text accessible={false} style={styles.quoteSheetMark}>“”</Text>
           </View>
           {quoteSaved ? (
             <Text style={styles.quoteDisplayText}>{quoteText}</Text>
@@ -2237,7 +2237,7 @@ function TodayScreen({
               placeholder="今天想留给自己的话"
               placeholderTextColor="#8d9a88"
               style={styles.quoteCardInput}
-              textAlignVertical="center"
+              textAlignVertical="top"
               value={quoteDraft}
             />
           )}
@@ -2886,7 +2886,7 @@ function TodosScreen({
             <View style={styles.trusteeHero}>
               <View style={styles.trusteeStatusPill}>
                 <View style={styles.trusteeStatusDot} />
-                <Text style={styles.trusteeStatusText}>邮件登记 · 人工回访</Text>
+                <Text style={styles.trusteeStatusText}>受人之托 · 忠人之事</Text>
               </View>
               <Text style={styles.trusteeHeroTitle}>把牵挂安放好，也让在意的人更安心</Text>
               <Text style={styles.trusteeHeroCopy}>
@@ -4835,9 +4835,10 @@ const styles = StyleSheet.create({
     fontSize: 21,
     fontWeight: '700',
     lineHeight: 34,
-    minHeight: 114,
+    minHeight: 104,
     paddingHorizontal: 0,
-    paddingVertical: 10,
+    paddingBottom: 8,
+    paddingTop: 2,
   },
   quoteSheet: {
     backgroundColor: '#252b23',
@@ -4862,16 +4863,18 @@ const styles = StyleSheet.create({
   },
   quoteSheetMark: {
     color: '#6e9860',
-    fontSize: 43,
-    lineHeight: 42,
+    fontSize: 31,
+    letterSpacing: 1,
+    lineHeight: 38,
   },
   quoteDisplayText: {
     color: colors.text,
     fontSize: 21,
     fontWeight: '700',
     lineHeight: 35,
-    minHeight: 114,
-    paddingVertical: 10,
+    minHeight: 104,
+    paddingBottom: 8,
+    paddingTop: 2,
   },
   quoteSheetFooter: {
     alignItems: 'center',

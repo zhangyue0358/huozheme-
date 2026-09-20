@@ -7,7 +7,7 @@ workflows:
       events:
         - push
       branch_patterns:
-        - pattern: codemagic/ios-build-20-20260920
+        - pattern: codemagic/ios-build-21-20260920
           include: true
           source: true
     environment:
