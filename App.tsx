@@ -2224,7 +2224,6 @@ function TodayScreen({
         <View style={styles.quoteSheet}>
           <View style={styles.quoteSheetHeader}>
             <Text style={styles.quoteSheetKicker}>TO MYSELF · {quoteDate.slice(5).replace('-', '.')}</Text>
-            <Text accessible={false} style={styles.quoteSheetMark}>“”</Text>
           </View>
           {quoteSaved ? (
             <Text style={styles.quoteDisplayText}>{quoteText}</Text>
@@ -3372,10 +3371,17 @@ function DiaryEntryCard({ aliveDays, entry }: { aliveDays: number; entry: DiaryE
 
   return (
     <View style={styles.diaryEntry}>
-      <Pressable style={styles.diaryEntryHead} onPress={() => setExpanded((current) => !current)}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        style={[styles.diaryEntryHead, expanded && styles.diaryEntryHeadExpanded]}
+        onPress={() => setExpanded((current) => !current)}
+      >
         <Text style={styles.diaryEntryDate}>{formatDiaryDate(entry.date)}</Text>
         <Text style={styles.diaryEntryMeta}>{entry.photoUrls.length} 图 · {entry.todos.filter((todo) => todo.done).length} 件事</Text>
-        <Text style={styles.diaryEntryArrow}>{expanded ? '⌃' : '⌄'}</Text>
+        <View accessible={false} style={styles.diaryEntryArrowWrap}>
+          <View style={[styles.diaryEntryArrow, expanded && styles.diaryEntryArrowExpanded]} />
+        </View>
       </Pressable>
       {expanded && (
         <View>
@@ -3460,7 +3466,12 @@ function TabButton({
   rightBadgeCount?: number;
 }) {
   return (
-    <Pressable style={[styles.tabButton, active && styles.tabButtonActive]} onPress={onPress}>
+    <Pressable
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
+      style={[styles.tabButton, active && styles.tabButtonActive]}
+      onPress={onPress}
+    >
       <View style={styles.tabIconWrap}>
         <TabGlyph icon={icon} active={active} />
         {leftBadgeCount > 0 && (
@@ -3481,17 +3492,16 @@ function TabButton({
 
 function TabGlyph({ active, icon }: { active: boolean; icon: TabIconKey }) {
   const main = active ? '#10120f' : colors.green;
-  const glow = active ? 'rgba(16,18,15,0.18)' : 'rgba(155,226,124,0.34)';
-  const shell = active ? 'rgba(16,18,15,0.18)' : '#1b211a';
-  const border = active ? 'rgba(16,18,15,0.22)' : 'rgba(155,226,124,0.28)';
+  const frame = {
+    backgroundColor: active ? 'rgba(16,18,15,0.06)' : '#1b211a',
+    borderColor: active ? 'rgba(16,18,15,0.3)' : 'rgba(155,226,124,0.38)',
+  };
 
   if (icon === 'today') {
     return (
-      <View style={[styles.tabGlyphBox, { borderColor: border, backgroundColor: shell }]}>
-        <View style={[styles.tabGlyphGlow, { backgroundColor: glow }]} />
-        <View style={[styles.tabGlyphSwitchTrack, { backgroundColor: active ? '#10120f' : '#070907' }]}>
-          <View style={[styles.tabGlyphSwitchLight, { backgroundColor: active ? colors.green : '#86df63' }]} />
-          <Text style={styles.tabGlyphHeart}>♥</Text>
+      <View accessible={false} style={[styles.tabGlyphBox, frame]}>
+        <View style={styles.tabGlyphSwitchTrack}>
+          <Text style={styles.tabGlyphSwitchHeart}>♥</Text>
           <View style={styles.tabGlyphSwitchKnob} />
         </View>
       </View>
@@ -3500,22 +3510,19 @@ function TabGlyph({ active, icon }: { active: boolean; icon: TabIconKey }) {
 
   if (icon === 'friends') {
     return (
-      <View style={[styles.tabGlyphBox, { borderColor: border, backgroundColor: shell }]}>
-        <View style={[styles.tabGlyphGlow, { backgroundColor: glow }]} />
-        <View style={[styles.tabGlyphFriendOrb, styles.tabGlyphFriendOrbLeft, { backgroundColor: main }]} />
-        <View style={[styles.tabGlyphFriendOrb, styles.tabGlyphFriendOrbRight, { borderColor: main }]} />
-        <View style={[styles.tabGlyphFriendLink, { backgroundColor: main }]} />
-        <View style={styles.tabGlyphPing} />
+      <View accessible={false} style={[styles.tabGlyphBox, frame]}>
+        <View style={[styles.tabGlyphFriendRing, { left: 5, borderColor: main }]} />
+        <View style={[styles.tabGlyphFriendRing, { right: 5, borderColor: main }]} />
+        <View style={styles.tabGlyphFriendAccent} />
       </View>
     );
   }
 
   if (icon === 'todos') {
     return (
-      <View style={[styles.tabGlyphBox, { borderColor: border, backgroundColor: shell }]}>
-        <View style={[styles.tabGlyphGlow, { backgroundColor: glow }]} />
+      <View accessible={false} style={[styles.tabGlyphBox, frame]}>
         {[0, 1, 2].map((item) => (
-          <View key={item} style={[styles.tabGlyphTodoPill, { top: 6 + item * 8, opacity: item === 0 ? 1 : item === 1 ? 0.72 : 0.48 }]}>
+          <View key={item} style={[styles.tabGlyphTodoRow, { top: 6 + item * 7 }]}>
             <View style={[styles.tabGlyphTodoDot, { backgroundColor: item === 2 ? colors.red : main }]} />
             <View style={[styles.tabGlyphTodoLine, { backgroundColor: main }]} />
           </View>
@@ -3525,11 +3532,9 @@ function TabGlyph({ active, icon }: { active: boolean; icon: TabIconKey }) {
   }
 
   return (
-    <View style={[styles.tabGlyphBox, { borderColor: border, backgroundColor: shell }]}>
-      <View style={[styles.tabGlyphGlow, { backgroundColor: glow }]} />
-      <View style={[styles.tabGlyphProfileHalo, { borderColor: main }]} />
+    <View accessible={false} style={[styles.tabGlyphBox, frame]}>
       <View style={[styles.tabGlyphProfileHead, { backgroundColor: main }]} />
-      <View style={[styles.tabGlyphProfileBody, { borderColor: main }]} />
+      <View style={[styles.tabGlyphProfileBody, { backgroundColor: main }]} />
       <Text style={styles.tabGlyphProfileHeart}>♥</Text>
     </View>
   );
@@ -4412,32 +4417,47 @@ const styles = StyleSheet.create({
     color: colors.text,
     flex: 1,
     fontSize: 15,
-    minHeight: 38,
+    includeFontPadding: false,
+    lineHeight: 22,
+    minHeight: 44,
+    minWidth: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    textAlignVertical: 'center',
   },
   friendPhoneInputWrap: {
     alignItems: 'center',
     flex: 1,
     flexDirection: 'row',
     gap: 8,
-    minHeight: 38,
+    minHeight: 44,
     minWidth: 0,
   },
   friendPhonePrefix: {
     color: colors.green,
+    flexShrink: 0,
     fontSize: 15,
     fontWeight: '900',
+    includeFontPadding: false,
+    lineHeight: 22,
   },
   smallButton: {
+    alignItems: 'center',
     backgroundColor: colors.green,
     borderRadius: 14,
     flexShrink: 0,
-    minHeight: 40,
+    justifyContent: 'center',
+    minHeight: 44,
     paddingHorizontal: 13,
-    paddingVertical: 9,
+    paddingVertical: 11,
   },
   smallButtonText: {
     color: '#10120f',
+    fontSize: 15,
     fontWeight: '800',
+    includeFontPadding: false,
+    lineHeight: 22,
+    textAlign: 'center',
   },
   inviteShareCard: {
     alignItems: 'center',
@@ -4806,9 +4826,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     color: colors.text,
     flex: 1,
+    fontSize: 14,
     height: 46,
+    includeFontPadding: false,
+    lineHeight: 20,
     minWidth: 0,
     paddingHorizontal: 14,
+    paddingVertical: 0,
+    textAlignVertical: 'center',
   },
   addButton: {
     alignItems: 'center',
@@ -4828,7 +4853,11 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     color: '#10120f',
+    fontSize: 14,
     fontWeight: '900',
+    includeFontPadding: false,
+    lineHeight: 20,
+    textAlign: 'center',
   },
   quoteCardInput: {
     color: colors.text,
@@ -4850,9 +4879,7 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
   },
   quoteSheetHeader: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    marginBottom: 12,
   },
   quoteSheetKicker: {
     color: colors.green,
@@ -4860,12 +4887,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 1,
-  },
-  quoteSheetMark: {
-    color: '#6e9860',
-    fontSize: 31,
-    letterSpacing: 1,
-    lineHeight: 38,
   },
   quoteDisplayText: {
     color: colors.text,
@@ -5173,6 +5194,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     justifyContent: 'space-between',
+    minHeight: 24,
+  },
+  diaryEntryHeadExpanded: {
     marginBottom: 10,
   },
   diaryEntryDate: {
@@ -5180,18 +5204,35 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: '900',
+    includeFontPadding: false,
+    lineHeight: 20,
   },
   diaryEntryMeta: {
     color: colors.soft,
     flexShrink: 1,
     fontSize: 11,
     fontWeight: '800',
+    includeFontPadding: false,
+    lineHeight: 20,
     textAlign: 'right',
   },
+  diaryEntryArrowWrap: {
+    alignItems: 'center',
+    flexShrink: 0,
+    height: 20,
+    justifyContent: 'center',
+    width: 20,
+  },
   diaryEntryArrow: {
-    color: colors.green,
-    fontSize: 16,
-    fontWeight: '900',
+    borderBottomWidth: 2,
+    borderColor: colors.green,
+    borderRightWidth: 2,
+    height: 8,
+    transform: [{ translateY: -2 }, { rotate: '45deg' }],
+    width: 8,
+  },
+  diaryEntryArrowExpanded: {
+    transform: [{ translateY: 2 }, { rotate: '225deg' }],
   },
   diaryEntryText: {
     color: colors.text,
@@ -6025,167 +6066,120 @@ const styles = StyleSheet.create({
   tabButtonActive: {
     backgroundColor: colors.green,
   },
-  tabIcon: {
-    color: colors.muted,
-    fontSize: 18,
-    fontWeight: '800',
-  },
   tabIconWrap: {
+    alignItems: 'center',
+    height: 32,
+    justifyContent: 'center',
     position: 'relative',
+    width: 32,
   },
   tabGlyphBox: {
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    elevation: 4,
-    height: 30,
-    overflow: 'hidden',
+    height: 32,
     position: 'relative',
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 7,
-    shadowOffset: { width: 0, height: 4 },
-    width: 30,
-  },
-  tabGlyphGlow: {
-    borderRadius: 999,
-    height: 24,
-    left: 3,
-    opacity: 0.7,
-    position: 'absolute',
-    top: 3,
-    width: 24,
+    width: 32,
   },
   tabGlyphSwitchTrack: {
-    borderColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 13,
-    left: 5,
-    overflow: 'hidden',
+    backgroundColor: colors.green,
+    borderRadius: 7,
+    height: 12,
+    left: 4,
     position: 'absolute',
     top: 9,
-    width: 20,
+    width: 22,
   },
-  tabGlyphSwitchLight: {
-    borderRadius: 999,
-    height: 11,
-    left: 1,
-    opacity: 0.95,
-    position: 'absolute',
-    top: 0,
-    width: 14,
-  },
-  tabGlyphSwitchKnob: {
-    backgroundColor: '#0b0d0b',
-    borderColor: 'rgba(255,255,255,0.18)',
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 13,
-    position: 'absolute',
-    right: -1,
-    top: -1,
-    width: 13,
-  },
-  tabGlyphHeart: {
+  tabGlyphSwitchHeart: {
     color: colors.red,
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '900',
-    left: 4,
+    height: 10,
+    includeFontPadding: false,
+    left: 1,
     lineHeight: 10,
     position: 'absolute',
+    textAlign: 'center',
     top: 1,
-    zIndex: 2,
+    width: 10,
   },
-  tabGlyphFriendOrb: {
-    alignItems: 'center',
-    borderRadius: 999,
+  tabGlyphSwitchKnob: {
+    backgroundColor: '#10120f',
+    borderColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 5,
+    borderWidth: 1,
+    height: 10,
+    position: 'absolute',
+    right: 1,
+    top: 1,
+    width: 10,
+  },
+  tabGlyphFriendRing: {
+    borderRadius: 6,
     borderWidth: 2,
     height: 12,
     position: 'absolute',
     top: 10,
     width: 12,
   },
-  tabGlyphFriendOrbLeft: {
-    left: 7,
-  },
-  tabGlyphFriendOrbRight: {
-    right: 7,
-  },
-  tabGlyphFriendLink: {
-    borderRadius: 999,
-    height: 3,
-    left: 13,
-    opacity: 0.62,
-    position: 'absolute',
-    top: 15,
-    width: 7,
-  },
-  tabGlyphPing: {
+  tabGlyphFriendAccent: {
     backgroundColor: colors.red,
-    borderRadius: 999,
-    height: 7,
-    left: 13,
+    borderRadius: 3,
+    height: 5,
+    left: 18,
     position: 'absolute',
-    top: 6,
-    width: 7,
+    top: 4,
+    width: 5,
   },
-  tabGlyphTodoPill: {
+  tabGlyphTodoRow: {
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.22)',
-    borderRadius: 999,
     flexDirection: 'row',
-    gap: 3,
-    height: 6,
-    left: 7,
-    paddingHorizontal: 2,
+    gap: 4,
+    height: 4,
+    left: 6,
     position: 'absolute',
-    width: 17,
+    width: 18,
   },
   tabGlyphTodoDot: {
-    borderRadius: 999,
-    height: 3,
-    width: 3,
+    borderRadius: 2,
+    height: 4,
+    width: 4,
   },
   tabGlyphTodoLine: {
-    borderRadius: 999,
-    height: 3,
-    width: 8,
-  },
-  tabGlyphProfileHalo: {
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 19,
-    left: 5,
-    opacity: 0.32,
-    position: 'absolute',
-    top: 6,
-    width: 19,
+    borderRadius: 1,
+    height: 2,
+    width: 10,
   },
   tabGlyphProfileHead: {
-    borderRadius: 999,
+    borderRadius: 4,
     height: 8,
     left: 11,
     position: 'absolute',
-    top: 8,
+    top: 6,
     width: 8,
   },
   tabGlyphProfileBody: {
-    borderRadius: 999,
-    borderTopWidth: 3,
-    height: 13,
-    left: 9,
+    borderBottomLeftRadius: 3,
+    borderBottomRightRadius: 3,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    height: 8,
+    left: 7,
     position: 'absolute',
-    top: 18,
-    width: 12,
+    top: 17,
+    width: 16,
   },
   tabGlyphProfileHeart: {
     color: colors.red,
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '900',
-    left: 13,
+    height: 10,
+    includeFontPadding: false,
+    left: 16,
     lineHeight: 10,
     position: 'absolute',
+    textAlign: 'center',
     top: 9,
+    width: 10,
   },
   tabBadge: {
     alignItems: 'center',
@@ -6212,7 +6206,9 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     color: colors.muted,
-    fontSize: 11,
+    fontSize: 12,
+    includeFontPadding: false,
+    lineHeight: 16,
   },
   tabTextActive: {
     color: '#10120f',
