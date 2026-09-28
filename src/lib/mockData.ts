@@ -14,6 +14,7 @@ export const demoTodos: Todo[] = [
 
 export const demoSnapshot: AppSnapshot = {
   aliveDays: 127,
+  checkinDate: '',
   aliveReplies: [],
   checkedIn: false,
   diaryEntries: [],

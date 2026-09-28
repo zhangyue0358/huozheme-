@@ -1,6 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import type { AppSnapshot, PersonalMessage, Todo } from './types';
-import { domesticRequest } from './domesticClient';
+import { domesticRequest, guardDomesticSession } from './domesticClient';
 
 const MAX_JOURNAL_PHOTO_BYTES = 10 * 1024 * 1024;
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
@@ -30,6 +30,7 @@ export async function loadDomesticAppSnapshot(): Promise<AppSnapshot> {
     : 0;
   return {
     ...snapshot,
+    checkinDate: typeof snapshot.checkinDate === 'string' ? snapshot.checkinDate : '',
     aliveDays,
     aliveReplies: Array.isArray(snapshot.aliveReplies) ? snapshot.aliveReplies : [],
     diaryEntries: Array.isArray(snapshot.diaryEntries) ? snapshot.diaryEntries : [],
@@ -76,22 +77,14 @@ export async function updateDomesticPrivacySetting(showStatusToFriends: boolean)
   });
 }
 
-export async function saveDomesticCheckin(
-  statusText: string,
-  quoteText: string,
+export async function saveDomesticJournal(
   journalText: string,
-  journalPhotoPaths: string[],
-  weatherText: string,
+  expectedJournalText: string,
+  checkinDate: string,
 ) {
-  await domesticRequest('/checkins/today', {
-    body: {
-      journalPhotoPaths,
-      journalText,
-      quoteText,
-      statusText,
-      weatherText,
-    },
-    method: 'POST',
+  await domesticRequest('/checkins/today/journal', {
+    body: { journalText, expectedJournalText, checkinDate },
+    method: 'PATCH',
   });
 }
 
@@ -121,8 +114,10 @@ function getOssErrorCode(responseBody: string) {
 }
 
 export async function uploadDomesticJournalPhoto(asset: DomesticJournalPhotoAsset) {
+  const assertSession = guardDomesticSession();
   const { contentType, fileName } = getPhotoUploadMetadata(asset);
   const fileInfo = await FileSystem.getInfoAsync(asset.uri);
+  assertSession();
   const byteSize = asset.fileSize || (fileInfo.exists ? fileInfo.size : 0);
 
   if (!fileInfo.exists || byteSize <= 0) {
@@ -161,6 +156,7 @@ export async function uploadDomesticJournalPhoto(asset: DomesticJournalPhotoAsse
     throw new Error(`照片存储服务返回异常（${uploadResponse.status}${ossCode ? ` / ${ossCode}` : ''}），请稍后再试。`);
   }
 
+  assertSession();
   const confirmed = await domesticRequest<{ path: string; signedUrl: string }>('/journal/photos/confirm', {
     body: {
       byteSize,
@@ -177,8 +173,10 @@ export async function uploadDomesticJournalPhoto(asset: DomesticJournalPhotoAsse
 }
 
 export async function uploadDomesticProfileAvatar(asset: DomesticJournalPhotoAsset) {
+  const assertSession = guardDomesticSession();
   const { contentType, fileName } = getPhotoUploadMetadata(asset);
   const fileInfo = await FileSystem.getInfoAsync(asset.uri);
+  assertSession();
   const byteSize = asset.fileSize || (fileInfo.exists ? fileInfo.size : 0);
 
   if (!fileInfo.exists || byteSize <= 0) {
@@ -217,6 +215,7 @@ export async function uploadDomesticProfileAvatar(asset: DomesticJournalPhotoAss
     throw new Error(`头像存储服务返回异常（${uploadResponse.status}${ossCode ? ` / ${ossCode}` : ''}），请稍后再试。`);
   }
 
+  assertSession();
   return domesticRequest<{ avatarUrl: string; path: string }>('/me/avatar/confirm', {
     body: {
       byteSize,
@@ -306,11 +305,5 @@ export async function acknowledgeDomesticAliveReply(replyId: string) {
 export async function requestDomesticAccountDeletion() {
   await domesticRequest('/account/deletion-request', {
     method: 'POST',
-  });
-}
-
-export async function deleteDomesticOwnAppData() {
-  await domesticRequest('/me/app-data', {
-    method: 'DELETE',
   });
 }

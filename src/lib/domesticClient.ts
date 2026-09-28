@@ -16,6 +16,33 @@ export type DomesticSessionPersistence = {
 };
 
 let activeSession: DomesticSession | null = null;
+const sessionExpiredListeners = new Set<() => void>();
+
+export class DomesticApiError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message);
+    this.name = 'DomesticApiError';
+  }
+}
+
+export class StaleSessionError extends Error {
+  constructor() {
+    super('账号已变化，本次操作已取消');
+    this.name = 'StaleSessionError';
+  }
+}
+
+export function guardDomesticSession() {
+  const token = activeSession?.accessToken;
+  return () => {
+    if (!token || activeSession?.accessToken !== token) throw new StaleSessionError();
+  };
+}
+
+export function onDomesticSessionExpired(listener: () => void) {
+  sessionExpiredListeners.add(listener);
+  return () => { sessionExpiredListeners.delete(listener); };
+}
 
 export const domesticApiUrl = (process.env.EXPO_PUBLIC_DOMESTIC_API_URL ?? '').replace(/\/$/, '');
 export const hasDomesticApiConfig = domesticApiUrl.length > 0;
@@ -156,16 +183,43 @@ export async function domesticRequest<T>(path: string, options: DomesticRequestO
     Accept: 'application/json',
   };
   if (options.body !== undefined) headers['Content-Type'] = 'application/json';
-  if (options.auth !== false) headers.Authorization = `Bearer ${await getDomesticToken()}`;
+  const requestToken = options.auth === false ? '' : await getDomesticToken();
+  if (requestToken) headers.Authorization = `Bearer ${requestToken}`;
 
-  const response = await fetch(`${domesticApiUrl}${path}`, {
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    headers,
-    method: options.method ?? (options.body === undefined ? 'GET' : 'POST'),
-  });
-  const payload = await response.json().catch(() => ({}));
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  let response: Response;
+  let payload: unknown;
+  try {
+    response = await fetch(`${domesticApiUrl}${path}`, {
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      headers,
+      method: options.method ?? (options.body === undefined ? 'GET' : 'POST'),
+      signal: controller.signal,
+    });
+    payload = await response.json().catch((error) => {
+      if (controller.signal.aborted) throw error;
+      return {};
+    });
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error('网络请求超时，请检查网络后重试');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+  if (response.ok && requestToken && activeSession?.accessToken !== requestToken) throw new StaleSessionError();
   if (!response.ok) {
-    throw new Error(payload?.error || '请求失败，请稍后再试');
+    if (response.status === 401 && requestToken && activeSession?.accessToken === requestToken) {
+      // Ignore stale responses from an older login, and notify only once.
+      const clearing = clearDomesticSession();
+      for (const listener of sessionExpiredListeners) listener();
+      await clearing.catch(() => {});
+    }
+    const fallback = response.status === 401
+      ? (options.auth === false ? '手机号或密码不正确' : '登录已失效，请重新登录')
+      : '请求失败，请稍后再试';
+    const serverError = payload && typeof payload === 'object' && 'error' in payload ? payload.error : undefined;
+    throw new DomesticApiError(typeof serverError === 'string' ? serverError : fallback, response.status);
   }
   return payload as T;
 }

@@ -32,7 +32,7 @@ import {
   pokeDomesticFriend,
   replyDomesticAliveToPoke,
   requestDomesticAccountDeletion,
-  saveDomesticCheckin,
+  saveDomesticJournal,
   saveDomesticQuote,
   saveDomesticPersonalMessages,
   sendDomesticFriendRequest,
@@ -50,15 +50,19 @@ import {
   signOutDomestic,
 } from './src/lib/domesticAuthApi';
 import {
+  DomesticApiError,
+  StaleSessionError,
   getDomesticPolicyConsent,
   getDomesticSession,
   getDomesticRememberMode,
   hasDomesticApiConfig,
+  onDomesticSessionExpired,
   saveDomesticSession,
   setDomesticPolicyConsent,
   type DomesticSession,
 } from './src/lib/domesticClient';
 import { demoSnapshot } from './src/lib/mockData';
+import { keepStableSnapshotPhotos } from './src/lib/snapshotSafety';
 import { disableDailyReminder, getReminderSettings, scheduleDailyReminder } from './src/lib/reminderNotifications';
 import type { AppSnapshot, DiaryEntry, Friend, FriendRequest, IncomingPoke, PersonalMessage, Profile, Todo } from './src/lib/types';
 
@@ -163,30 +167,6 @@ const dailyEncouragements = [
 ];
 
 const weatherOptions = ['☀️ 晴', '🌤️ 多云', '🌧️ 雨', '⛈️ 雷', '🌙 夜'];
-
-function isLocalPhotoUrl(url: string) {
-  return url.startsWith('file:') || url.startsWith('ph:') || url.startsWith('assets-library:');
-}
-
-function stablePhotoUrls(previousPaths: string[], previousUrls: string[], nextPaths: string[], nextUrls: string[]) {
-  const previousUrlByPath = new Map(previousPaths.map((path, index) => [path, previousUrls[index] ?? '']));
-
-  return nextPaths.map((path, index) => {
-    const previousUrl = previousUrlByPath.get(path) ?? '';
-    const nextUrl = nextUrls[index] ?? '';
-
-    if (!previousUrl) return nextUrl;
-    if (isLocalPhotoUrl(previousUrl) && nextUrl) return nextUrl;
-    return previousUrl;
-  });
-}
-
-function keepStableSnapshotPhotos(previous: AppSnapshot, next: AppSnapshot): AppSnapshot {
-  return {
-    ...next,
-    journalPhotoUrls: stablePhotoUrls(previous.journalPhotoPaths, previous.journalPhotoUrls, next.journalPhotoPaths, next.journalPhotoUrls),
-  };
-}
 
 function buildDiaryText({
   aliveDays,
@@ -295,6 +275,7 @@ export default function App() {
   const [demoMode, setDemoMode] = useState(!hasDomesticApiConfig);
   const [journalSaveState, setJournalSaveState] = useState<SaveState>('idle');
   const [journalEditing, setJournalEditing] = useState(false);
+  const [journalBase, setJournalBase] = useState({ date: '', text: '' });
   const [quoteSaveState, setQuoteSaveState] = useState<SaveState>('idle');
   const [savedJournalText, setSavedJournalText] = useState(demoSnapshot.journalText);
   const [dismissedPokeIds, setDismissedPokeIds] = useState<Set<string>>(new Set());
@@ -308,6 +289,13 @@ export default function App() {
   const [sessionRestoring, setSessionRestoring] = useState(hasDomesticApiConfig);
   const [signingOut, setSigningOut] = useState(false);
   const [snapshotLoading, setSnapshotLoading] = useState(false);
+  const [snapshotError, setSnapshotError] = useState('');
+  const [snapshotRetry, setSnapshotRetry] = useState(0);
+  const snapshotSequence = useRef(0);
+  const snapshotRequests = useRef(0);
+  const [addingTodo, setAddingTodo] = useState(false);
+  const addingTodoRef = useRef(false);
+  const journalBusy = useRef(false);
   const saveNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSnapshotJournalText = useRef(demoSnapshot.journalText);
   const lastSnapshotQuoteText = useRef(demoSnapshot.quoteText);
@@ -316,6 +304,10 @@ export default function App() {
   const [appToast, setAppToast] = useState('');
   const appToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userId = session?.profile.id;
+  const accountScope = demoMode ? 'demo' : session?.accessToken || 'signed-out';
+  const activeAccountScope = useRef(accountScope);
+  activeAccountScope.current = accountScope;
+  const isCurrentAccount = () => activeAccountScope.current === accountScope;
   const snapshotReady = demoMode || !userId || snapshot.profile.id === userId;
 
   const checkedIn = snapshot.checkedIn;
@@ -403,6 +395,7 @@ export default function App() {
   }
 
   function requireCheckin() {
+    if (!isCurrentAccount()) return false;
     if (checkedIn) return true;
     Alert.alert('请先确认今天还在', '确认之后，今天的随笔、照片和三件事才会留下痕迹。');
     return false;
@@ -413,6 +406,13 @@ export default function App() {
     if (appToastTimer.current) clearTimeout(appToastTimer.current);
     appToastTimer.current = setTimeout(() => setAppToast(''), 1800);
   }
+
+  useEffect(() => onDomesticSessionExpired(() => {
+    setSession(null);
+    setSnapshot(demoSnapshot);
+    setSnapshotLoading(false);
+    Alert.alert('登录已失效', '登录已过期或密码已重置，请重新登录。');
+  }), []);
 
   useEffect(() => {
     if (!hasDomesticApiConfig) {
@@ -447,6 +447,23 @@ export default function App() {
 
   useEffect(() => {
     setSnapshot(demoSnapshot);
+    setDraft('');
+    setImportantDraft(false);
+    setQuickRecordDraft('');
+    setQuickRecordOpen(false);
+    setTodayDiaryOpen(false);
+    setWeatherPickerOpen(false);
+    setJournalBase({ date: '', text: '' });
+    setSnapshotError('');
+    setAppToast('');
+    setUploadingPhoto(false);
+    setUploadingAvatar(false);
+    setAddingTodo(false);
+    addingTodoRef.current = false;
+    journalBusy.current = false;
+    snapshotSequence.current += 1;
+    if (saveNoticeTimer.current) clearTimeout(saveNoticeTimer.current);
+    if (appToastTimer.current) clearTimeout(appToastTimer.current);
     setPendingMood({ date: localDateIso(), value: '' });
     setPendingWeather({ date: localDateIso(), value: '' });
     setJournalDraft(demoSnapshot.journalText);
@@ -460,7 +477,7 @@ export default function App() {
     setOptimisticPokedFriendIds(new Set());
     lastSnapshotJournalText.current = demoSnapshot.journalText;
     lastSnapshotQuoteText.current = demoSnapshot.quoteText;
-  }, [demoMode, userId]);
+  }, [accountScope]);
 
   useEffect(() => {
     if (!userId || demoMode) {
@@ -471,13 +488,11 @@ export default function App() {
     let cancelled = false;
 
     setSnapshotLoading(true);
-    loadDomesticAppSnapshot()
-      .then((nextSnapshot) => {
-        if (cancelled) return;
-        setSnapshot((current) => keepStableSnapshotPhotos(current, nextSnapshot));
-      })
+    setSnapshotError('');
+    refreshSnapshot()
       .catch(async (error) => {
-        if (cancelled) return;
+        if (cancelled || !isCurrentAccount()) return;
+        if (error instanceof DomesticApiError && error.status === 401) return;
         if (error instanceof Error && error.message.includes('账户注销处理中')) {
           await signOutDomestic();
           setSession(null);
@@ -485,7 +500,7 @@ export default function App() {
           Alert.alert('账户注销处理中', '这个账户已经提交注销，暂时不能继续登录。');
           return;
         }
-        Alert.alert('同步失败', error.message);
+        setSnapshotError(error instanceof Error ? error.message : '同步失败，请稍后重试');
       })
       .finally(() => {
         if (!cancelled) setSnapshotLoading(false);
@@ -494,21 +509,21 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [demoMode, userId]);
+  }, [accountScope, snapshotRetry]);
 
   useEffect(() => {
     if (!userId || demoMode) return;
 
     const timer = setInterval(() => {
-      loadDomesticAppSnapshot()
-        .then((nextSnapshot) => setSnapshot((current) => keepStableSnapshotPhotos(current, nextSnapshot)))
+      if (snapshotRequests.current > 0) return;
+      refreshSnapshot()
         .catch(() => {
           // 轻量同步好友回馈和戳一下，失败时避免频繁打扰用户。
         });
     }, 6000);
 
     return () => clearInterval(timer);
-  }, [demoMode, userId]);
+  }, [accountScope]);
 
   useEffect(() => {
     setQuoteDraft((currentDraft) => (currentDraft === lastSnapshotQuoteText.current ? snapshot.quoteText : currentDraft));
@@ -525,8 +540,20 @@ export default function App() {
 
   async function refreshSnapshot() {
     if (!userId || demoMode) return;
-    const nextSnapshot = await loadDomesticAppSnapshot();
-    setSnapshot((current) => keepStableSnapshotPhotos(current, nextSnapshot));
+    if (!isCurrentAccount()) throw new StaleSessionError();
+    const sequence = ++snapshotSequence.current;
+    snapshotRequests.current += 1;
+    try {
+      const nextSnapshot = await loadDomesticAppSnapshot();
+      if (!isCurrentAccount() || nextSnapshot.profile.id !== userId) throw new StaleSessionError();
+      if (sequence === snapshotSequence.current) {
+        setSnapshot((current) => keepStableSnapshotPhotos(current, nextSnapshot));
+        setSnapshotError('');
+      }
+      return nextSnapshot;
+    } finally {
+      snapshotRequests.current -= 1;
+    }
   }
 
   async function handleCheckin() {
@@ -607,48 +634,42 @@ export default function App() {
   }
 
   async function addTodo() {
-    if (!requireCheckin()) return;
-
+    if (!requireCheckin() || addingTodoRef.current) return;
     const text = draft.trim();
     if (!text || todos.length >= 3) return;
-
-    if (userId && !demoMode) {
-      try {
+    addingTodoRef.current = true;
+    setAddingTodo(true);
+    try {
+      if (userId && !demoMode) {
         const todo = await createDomesticTodo(text, importantDraft);
-        setSnapshot((current) => ({ ...current, todos: [...current.todos, todo] }));
-        await refreshSnapshot();
-      } catch (error) {
-        Alert.alert('添加失败', error instanceof Error ? error.message : '请稍后再试');
-        return;
+        if (!isCurrentAccount()) return;
+        setSnapshot((current) => ({ ...current, todos: [...current.todos.filter((item) => item.id !== todo.id), todo] }));
+        await refreshSnapshot().catch(() => undefined);
+      } else {
+        setSnapshot((current) => ({
+          ...current,
+          todos: [...current.todos, { id: String(Date.now()), text, done: false, important: importantDraft }],
+        }));
       }
-    } else {
-      setSnapshot((current) => ({
-        ...current,
-        todos: [...current.todos, { id: String(Date.now()), text, done: false, important: importantDraft }],
-      }));
+      if (!isCurrentAccount()) return;
+      setDraft('');
+      setImportantDraft(false);
+    } catch (error) {
+      if (isCurrentAccount()) Alert.alert('添加失败', error instanceof Error ? error.message : '请稍后再试');
+    } finally {
+      if (isCurrentAccount()) {
+        addingTodoRef.current = false;
+        setAddingTodo(false);
+      }
     }
-
-    setDraft('');
-    setImportantDraft(false);
   }
 
   async function updateStatusText(value: string) {
-    if (!checkedIn) {
-      setPendingMood({ date: localDateIso(), value });
+    if (checkedIn) {
+      showAppToast('今天心情已随确认存档。');
       return;
     }
-
-    setSnapshot((current) => ({ ...current, statusText: value }));
-
-    if (!userId || demoMode) return;
-
-    try {
-      await saveDomesticCheckin(value, quoteText, journalText, journalPhotoPaths, weatherText);
-      await refreshSnapshot();
-    } catch (error) {
-      Alert.alert('保存心情失败', error instanceof Error ? error.message : '请稍后再试');
-      await refreshSnapshot();
-    }
+    setPendingMood({ date: localDateIso(), value });
   }
 
   function updateJournalText(value: string) {
@@ -659,6 +680,7 @@ export default function App() {
   function startJournalEditing() {
     if (!requireCheckin()) return;
     setJournalDraft(journalText);
+    setJournalBase({ date: snapshot.checkinDate, text: journalText });
     setJournalSaveState('idle');
     setJournalEditing(true);
   }
@@ -716,26 +738,44 @@ export default function App() {
   }
 
   async function saveJournal() {
-    if (!requireCheckin()) return;
-
+    if (!requireCheckin() || journalBusy.current) return;
     const nextJournal = journalDraft.trim();
-
+    journalBusy.current = true;
     setJournalSaveState('saving');
-
-    if (!userId || demoMode) {
-      setSnapshot((current) => ({ ...current, journalText: nextJournal }));
-      showSavedFeedback(nextJournal);
-      return;
-    }
-
     try {
-      await saveDomesticCheckin(statusText, quoteText, nextJournal, journalPhotoPaths, weatherText);
-      await refreshSnapshot();
+      if (userId && !demoMode) {
+        await saveDomesticJournal(nextJournal, journalBase.text, journalBase.date);
+      }
+      if (!isCurrentAccount()) return;
+      setSnapshot((current) => ({ ...current, journalText: nextJournal }));
+      setJournalDraft(nextJournal);
+      setJournalBase((current) => ({ ...current, text: nextJournal }));
       showSavedFeedback(nextJournal);
+      await refreshSnapshot().catch(() => undefined);
     } catch (error) {
+      if (!isCurrentAccount()) return;
       setJournalSaveState('idle');
+      if (error instanceof DomesticApiError && error.status === 409) {
+        const latest = await refreshSnapshot().catch(() => undefined);
+        if (!isCurrentAccount()) return;
+        if (latest) {
+          Alert.alert('随笔有更新，草稿已保留',
+            '最新内容：\n' + (latest.journalText.slice(0, 400) || '（空白）') + '\n\n可以合并后继续编辑，确认后再保存。',
+            [
+              { text: '先保留草稿', style: 'cancel' },
+              { text: '合并并编辑', onPress: () => {
+                if (!isCurrentAccount()) return;
+                setJournalDraft([latest.journalText, nextJournal].filter(Boolean).join('\n'));
+                setJournalBase({ date: latest.checkinDate, text: latest.journalText });
+                setJournalEditing(true);
+              }},
+            ]);
+          return;
+        }
+      }
       Alert.alert('保存失败', error instanceof Error ? error.message : '请稍后再试');
-      await refreshSnapshot();
+    } finally {
+      if (isCurrentAccount()) journalBusy.current = false;
     }
   }
 
@@ -761,120 +801,98 @@ export default function App() {
 
   function openQuickRecord() {
     if (!requireCheckin()) return;
+    if (journalEditing && journalDraft.trim() !== journalText) {
+      Alert.alert('随笔尚未保存', '请先保存正在编辑的随笔，再打开快捷记录。');
+      return;
+    }
     setQuickRecordOpen(true);
   }
 
   async function saveQuickRecord() {
-    if (!requireCheckin()) return;
-
+    if (!requireCheckin() || journalBusy.current) return;
     const text = quickRecordDraft.trim();
     if (!text) return;
-
-    const time = new Intl.DateTimeFormat('zh-CN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(new Date());
+    const time = new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
     const baseJournal = journalText.trim();
     const nextJournal = baseJournal ? `${baseJournal}\n${time} ${text}` : `${time} ${text}`;
-
+    journalBusy.current = true;
     setJournalSaveState('saving');
-
-    if (!userId || demoMode) {
+    try {
+      if (userId && !demoMode) {
+        await saveDomesticJournal(nextJournal, journalText, snapshot.checkinDate);
+      }
+      if (!isCurrentAccount()) return;
       setJournalDraft(nextJournal);
       setSnapshot((current) => ({ ...current, journalText: nextJournal }));
       setQuickRecordDraft('');
       setQuickRecordOpen(false);
       showSavedFeedback(nextJournal);
-      return;
-    }
-
-    try {
-      await saveDomesticCheckin(statusText, quoteText, nextJournal, journalPhotoPaths, weatherText);
-      await refreshSnapshot();
-      setJournalDraft(nextJournal);
-      setQuickRecordDraft('');
-      setQuickRecordOpen(false);
-      showSavedFeedback(nextJournal);
+      await refreshSnapshot().catch(() => undefined);
     } catch (error) {
+      if (!isCurrentAccount()) return;
       setJournalSaveState('idle');
-      Alert.alert('记录失败', error instanceof Error ? error.message : '请稍后再试');
+      await refreshSnapshot().catch(() => undefined);
+      if (!isCurrentAccount()) return;
+      Alert.alert('记录未保存，草稿已保留', error instanceof Error ? error.message : '请稍后重试');
+    } finally {
+      if (isCurrentAccount()) journalBusy.current = false;
     }
   }
 
   async function addJournalPhoto() {
-    if (!requireCheckin()) return;
+    if (!requireCheckin() || journalBusy.current) return;
     if (!journalEditing) {
       Alert.alert('请先进入编辑', '点击随笔小记中的“编辑”后，再添加照片。');
       return;
     }
-
     if (journalPhotoCount >= 3) {
       Alert.alert('最多 3 张', '今天的电子日记最多放 3 张照片。');
       return;
     }
-
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('需要相册权限', '允许访问相册后，才能给随笔小记添加照片。');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: false,
-      allowsMultipleSelection: false,
-      mediaTypes: ['images'],
-      preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
-      quality: 0.82,
-    });
-
-    if (result.canceled || !result.assets[0]?.uri) return;
-
-    const selectedAsset = result.assets[0];
-    const localUri = selectedAsset.uri;
-
-    if (!userId || demoMode) {
-      setSnapshot((current) => ({
-        ...current,
-        journalPhotoPaths: [...current.journalPhotoPaths, localUri].slice(0, 3),
-        journalPhotoUrls: [...current.journalPhotoUrls, localUri].slice(0, 3),
-      }));
-      showAppToast('照片已保存到今天。');
-      return;
-    }
-
+    journalBusy.current = true;
     setUploadingPhoto(true);
     try {
-      const photo = await uploadDomesticJournalPhoto({
-        fileName: selectedAsset.fileName,
-        fileSize: selectedAsset.fileSize,
-        mimeType: selectedAsset.mimeType,
-        uri: localUri,
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!isCurrentAccount()) return;
+      if (!permission.granted) {
+        Alert.alert('需要相册权限', '允许访问相册后，才能给随笔小记添加照片。');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: false,
+        allowsMultipleSelection: false,
+        mediaTypes: ['images'],
+        preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
+        quality: 0.82,
       });
-      const nextPaths = [...journalPhotoPaths, photo.path].slice(0, 3);
-      const currentUrls = journalPhotoPaths.map((_path, index) => journalPhotoUrls[index] ?? '');
-      const nextUrls = [...currentUrls, photo.signedUrl || localUri].slice(0, 3);
-
-      setSnapshot((current) => ({
+      if (!isCurrentAccount() || result.canceled || !result.assets[0]?.uri) return;
+      const selectedAsset = result.assets[0];
+      const photo = userId && !demoMode
+        ? await uploadDomesticJournalPhoto(selectedAsset)
+        : { path: selectedAsset.uri, signedUrl: selectedAsset.uri };
+      if (!isCurrentAccount()) return;
+      setSnapshot((current) => current.journalPhotoPaths.includes(photo.path) ? current : ({
         ...current,
-        journalPhotoPaths: nextPaths,
-        journalPhotoUrls: nextUrls,
+        journalPhotoPaths: [...current.journalPhotoPaths, photo.path].slice(0, 3),
+        journalPhotoUrls: [...current.journalPhotoUrls, photo.signedUrl].slice(0, 3),
       }));
-
-      await saveDomesticCheckin(statusText, quoteText, journalText, nextPaths, weatherText);
-      await refreshSnapshot();
-      showAppToast('照片已保存到今天。');
+      await refreshSnapshot().catch(() => undefined);
+      if (isCurrentAccount()) showAppToast('照片已保存到今天。');
     } catch (error) {
-      Alert.alert('照片上传失败，请稍后再试', error instanceof Error ? error.message : undefined);
+      if (isCurrentAccount()) Alert.alert('照片上传失败', error instanceof Error ? error.message : '请稍后重试');
     } finally {
-      setUploadingPhoto(false);
+      if (isCurrentAccount()) {
+        journalBusy.current = false;
+        setUploadingPhoto(false);
+      }
     }
   }
 
   async function changeProfileAvatar() {
-    if (uploadingAvatar) return;
+    if (uploadingAvatar || !isCurrentAccount()) return;
 
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!isCurrentAccount()) return;
     if (!permission.granted) {
       Alert.alert('需要相册权限', '允许访问相册后，才能更换头像。');
       return;
@@ -888,7 +906,7 @@ export default function App() {
       preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
       quality: 0.82,
     });
-    if (result.canceled || !result.assets[0]?.uri) return;
+    if (!isCurrentAccount() || result.canceled || !result.assets[0]?.uri) return;
 
     const selectedAsset = result.assets[0];
     if (!userId || demoMode) {
@@ -908,6 +926,7 @@ export default function App() {
         mimeType: selectedAsset.mimeType,
         uri: selectedAsset.uri,
       });
+      if (!isCurrentAccount()) return;
       setSnapshot((current) => ({
         ...current,
         profile: { ...current.profile, avatarUrl: avatar.avatarUrl },
@@ -915,40 +934,35 @@ export default function App() {
       await refreshSnapshot();
       showAppToast('头像已更新，好友列表会同步显示。');
     } catch (error) {
-      Alert.alert('头像上传失败', error instanceof Error ? error.message : '请稍后再试');
+      if (isCurrentAccount()) Alert.alert('头像上传失败', error instanceof Error ? error.message : '请稍后再试');
     } finally {
-      setUploadingAvatar(false);
+      if (isCurrentAccount()) setUploadingAvatar(false);
     }
   }
 
   async function removeJournalPhoto(index: number) {
-    if (!requireCheckin()) return;
-    if (!journalEditing) return;
-
+    if (!requireCheckin() || !journalEditing || journalBusy.current) return;
     const removedPath = journalPhotoPaths[index];
-    const nextPaths = journalPhotoPaths.filter((_path, pathIndex) => pathIndex !== index);
-    const urlByPath = new Map(journalPhotoPaths.map((path, pathIndex) => [path, journalPhotoUrls[pathIndex] ?? '']));
-    const nextUrls = nextPaths.map((path) => urlByPath.get(path) ?? '');
-
-    setSnapshot((current) => ({
-      ...current,
-      journalPhotoPaths: nextPaths,
-      journalPhotoUrls: nextUrls,
-    }));
-
-    if (!userId || demoMode) {
-      showAppToast('照片已移除。');
-      return;
-    }
-
+    if (!removedPath) return;
+    journalBusy.current = true;
+    setUploadingPhoto(true);
     try {
-      if (removedPath) await deleteDomesticJournalPhoto(removedPath);
-      await saveDomesticCheckin(statusText, quoteText, journalText, nextPaths, weatherText);
-      await refreshSnapshot();
-      showAppToast('照片已移除。');
+      if (userId && !demoMode) await deleteDomesticJournalPhoto(removedPath);
+      if (!isCurrentAccount()) return;
+      setSnapshot((current) => {
+        const nextPaths = current.journalPhotoPaths.filter((path) => path !== removedPath);
+        const urls = new Map(current.journalPhotoPaths.map((path, i) => [path, current.journalPhotoUrls[i] || '']));
+        return { ...current, journalPhotoPaths: nextPaths, journalPhotoUrls: nextPaths.map((path) => urls.get(path) || '') };
+      });
+      await refreshSnapshot().catch(() => undefined);
+      if (isCurrentAccount()) showAppToast('照片已移除。');
     } catch (error) {
-      Alert.alert('删除照片失败', error instanceof Error ? error.message : '请稍后再试');
-      await refreshSnapshot();
+      if (isCurrentAccount()) Alert.alert('删除照片失败', error instanceof Error ? error.message : '请稍后重试');
+    } finally {
+      if (isCurrentAccount()) {
+        journalBusy.current = false;
+        setUploadingPhoto(false);
+      }
     }
   }
 
@@ -1129,6 +1143,7 @@ export default function App() {
         text: '删除',
         style: 'destructive',
         onPress: async () => {
+          if (!isCurrentAccount()) return;
           try {
             await deleteDomesticFriendship(friend.id);
             await refreshSnapshot();
@@ -1252,6 +1267,7 @@ export default function App() {
                   text: '确认注销',
                   style: 'destructive',
                   onPress: async () => {
+                    if (!isCurrentAccount()) return;
                     try {
                       await requestDomesticAccountDeletion();
                       await disableDailyReminder().catch(() => undefined);
@@ -1309,7 +1325,7 @@ export default function App() {
   }
 
   if (!demoMode && hasDomesticApiConfig && session && (!snapshotReady || snapshotLoading)) {
-    return <AccountLoadingScreen />;
+    return <AccountLoadingScreen error={snapshotError} onRetry={() => setSnapshotRetry((value) => value + 1)} onSignOut={completeSignOut} />;
   }
 
   return (
@@ -1387,6 +1403,7 @@ export default function App() {
           {tab === 'todos' && (
             <TodosScreen
               addTodo={addTodo}
+              addingTodo={addingTodo}
               draft={draft}
               importantDraft={importantDraft}
               onSavePersonalMessages={handleSavePersonalMessages}
@@ -1432,12 +1449,13 @@ export default function App() {
           <TabButton active={tab === 'todos'} label="想做" icon="todos" onPress={() => setTab('todos')} />
           <TabButton active={tab === 'profile'} label="我" icon="profile" onPress={() => setTab('profile')} />
         </View>
-        <Modal animationType="fade" transparent visible={quickRecordOpen} onRequestClose={() => setQuickRecordOpen(false)}>
+        <Modal animationType="fade" transparent visible={quickRecordOpen} onRequestClose={() => { if (journalSaveState !== 'saving') setQuickRecordOpen(false); }}>
           <View style={styles.modalBackdrop}>
             <View style={styles.quickRecordPanel}>
               <SectionHead title="马上记一下" meta="写进今天" />
               <TextInput
                 autoFocus
+                editable={journalSaveState !== 'saving'}
                 maxLength={180}
                 multiline
                 onChangeText={setQuickRecordDraft}
@@ -1448,15 +1466,15 @@ export default function App() {
                 value={quickRecordDraft}
               />
               <View style={styles.quickRecordActions}>
-                <Pressable style={styles.quickRecordCancel} onPress={() => setQuickRecordOpen(false)}>
+                <Pressable disabled={journalSaveState === 'saving'} style={styles.quickRecordCancel} onPress={() => setQuickRecordOpen(false)}>
                   <Text style={styles.quickRecordCancelText}>取消</Text>
                 </Pressable>
                 <Pressable
-                  disabled={!quickRecordDraft.trim()}
-                  style={[styles.quickRecordSave, !quickRecordDraft.trim() && styles.disabledButton]}
+                  disabled={!quickRecordDraft.trim() || journalSaveState === 'saving' || uploadingPhoto}
+                  style={[styles.quickRecordSave, (!quickRecordDraft.trim() || journalSaveState === 'saving' || uploadingPhoto) && styles.disabledButton]}
                   onPress={saveQuickRecord}
                 >
-                  <Text style={styles.quickRecordSaveText}>保存</Text>
+                  <Text style={styles.quickRecordSaveText}>{journalSaveState === 'saving' ? '保存中' : '保存'}</Text>
                 </Pressable>
               </View>
             </View>
@@ -1490,16 +1508,21 @@ export default function App() {
   );
 }
 
-function AccountLoadingScreen() {
+function AccountLoadingScreen({ error = '', onRetry, onSignOut }: { error?: string; onRetry?: () => void; onSignOut?: () => void }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
       <View style={styles.launch}>
         <View style={styles.launchCard}>
           <Text style={styles.launchKicker}>欢迎回来</Text>
-          <Text style={styles.launchTitle}>正在同步</Text>
-          <Text style={styles.launchCopy}>正在读取这个账号的昵称、日记和好友状态。</Text>
-          <ActivityIndicator color={colors.green} size="large" />
+          <Text style={styles.launchTitle}>{error ? '暂时无法同步' : '正在同步'}</Text>
+          <Text style={styles.launchCopy}>{error || '正在读取这个账号的昵称、日记和好友状态。'}</Text>
+          {error ? (
+            <>
+              <Pressable style={styles.primaryButton} onPress={onRetry}><Text style={styles.primaryButtonText}>重新同步</Text></Pressable>
+              <Pressable style={styles.todayDiaryGhost} onPress={onSignOut}><Text style={styles.todayDiaryGhostText}>退出登录</Text></Pressable>
+            </>
+          ) : <ActivityIndicator color={colors.green} size="large" />}
         </View>
       </View>
     </SafeAreaView>
@@ -2163,7 +2186,7 @@ function TodayScreen({
           ) : null}
         </View>
         <TextInput
-          editable={checkedIn && journalEditing}
+          editable={checkedIn && journalEditing && !savingJournal}
           maxLength={180}
           multiline
           onChangeText={setJournalDraft}
@@ -2178,11 +2201,11 @@ function TodayScreen({
           <View style={styles.photoActionRow}>
             <Animated.View style={{ transform: [{ scale: savePulse }] }}>
               <Pressable
-                disabled={!canSaveJournal || savingJournal}
+                disabled={!canSaveJournal || savingJournal || uploadingPhoto}
                 style={[
                   styles.journalSaveButton,
                   journalSaveState === 'saved' && styles.journalSaveButtonSaved,
-                  (!canSaveJournal || savingJournal) && styles.disabledButton,
+                  (!canSaveJournal || savingJournal || uploadingPhoto) && styles.disabledButton,
                 ]}
                 onPress={onSaveJournal}
               >
@@ -2190,8 +2213,8 @@ function TodayScreen({
               </Pressable>
             </Animated.View>
             <Pressable
-              disabled={uploadingPhoto || journalPhotoCount >= 3}
-              style={[styles.photoAddButton, (uploadingPhoto || journalPhotoCount >= 3) && styles.disabledButton]}
+              disabled={uploadingPhoto || savingJournal || journalPhotoCount >= 3}
+              style={[styles.photoAddButton, (uploadingPhoto || savingJournal || journalPhotoCount >= 3) && styles.disabledButton]}
               onPress={onAddJournalPhoto}
             >
               <Text style={styles.photoAddButtonText}>{uploadingPhoto ? '上传中' : '添加照片'}</Text>
@@ -2208,7 +2231,7 @@ function TodayScreen({
                 <View key={path} style={styles.photoThumbWrap}>
                   {url ? <Image source={{ uri: url }} style={styles.photoThumb} /> : null}
                   {journalEditing ? (
-                    <Pressable style={styles.photoRemoveButton} onPress={() => onRemoveJournalPhoto(index)}>
+                    <Pressable disabled={uploadingPhoto || savingJournal} style={styles.photoRemoveButton} onPress={() => onRemoveJournalPhoto(index)}>
                       <Text style={styles.photoRemoveText}>×</Text>
                     </Pressable>
                   ) : null}
@@ -2595,7 +2618,7 @@ function FriendRow({
             </View>
           )}
           <Text style={styles.friendMeta}>
-            {friend.days} 天 · 连续 {friend.streak} 天 · {lastSeenText}
+            {friend.statusVisible === false ? '状态已隐藏' : `${friend.days ?? 0} 天 · 连续 ${friend.streak ?? 0} 天 · ${lastSeenText}`}
           </Text>
         </View>
         <Pressable disabled={poked} style={[styles.pokeButton, poked && styles.pokeButtonDone]} onPress={() => onPokeFriend(friend)}>
@@ -2608,6 +2631,7 @@ function FriendRow({
 
 function TodosScreen({
   addTodo,
+  addingTodo,
   draft,
   importantDraft,
   onSavePersonalMessages,
@@ -2620,6 +2644,7 @@ function TodosScreen({
   toggleTodoImportant,
 }: {
   addTodo: () => void;
+  addingTodo: boolean;
   draft: string;
   importantDraft: boolean;
   onSavePersonalMessages: (messages: PersonalMessage[]) => Promise<PersonalMessage[]>;
@@ -2709,7 +2734,7 @@ function TodosScreen({
         <SectionHead title="今天最想做的三件事" meta={`${todos.length}/3`} />
         <View style={styles.addRow}>
           <TextInput
-            editable={todos.length < 3}
+            editable={todos.length < 3 && !addingTodo}
             maxLength={24}
             onChangeText={setDraft}
             onSubmitEditing={addTodo}
@@ -2720,11 +2745,11 @@ function TodosScreen({
             value={draft}
           />
           <Pressable
-            disabled={todos.length >= 3 || !draft.trim()}
+            disabled={addingTodo || todos.length >= 3 || !draft.trim()}
             onPress={addTodo}
-            style={[styles.addButton, (todos.length >= 3 || !draft.trim()) && styles.disabledButton]}
+            style={[styles.addButton, (addingTodo || todos.length >= 3 || !draft.trim()) && styles.disabledButton]}
           >
-            <Text style={styles.addButtonText}>加</Text>
+            <Text style={styles.addButtonText}>{addingTodo ? '添加中' : '加'}</Text>
           </Pressable>
         </View>
         <Pressable style={[styles.importantToggle, importantDraft && styles.importantToggleActive]} onPress={() => setImportantDraft(!importantDraft)}>
@@ -3104,6 +3129,11 @@ function ProfileScreen({
         setReminderTime(settings.time);
       }
     } catch (error) {
+      const actual = await getReminderSettings().catch(() => null);
+      if (actual) {
+        setSoftReminder(actual.enabled);
+        setReminderTime(actual.time);
+      }
       if (error instanceof Error && error.message.includes('通知权限')) {
         showReminderPermissionAlert();
       } else {
@@ -3126,6 +3156,11 @@ function ProfileScreen({
       setReminderTime(settings.time);
     } catch (error) {
       setReminderTime(previousTime);
+      const actual = await getReminderSettings().catch(() => null);
+      if (actual) {
+        setSoftReminder(actual.enabled);
+        setReminderTime(actual.time);
+      }
       if (error instanceof Error && error.message.includes('通知权限')) {
         showReminderPermissionAlert();
       } else {

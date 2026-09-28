@@ -62,6 +62,7 @@ async function prepareNotificationPermission() {
 }
 
 function parseReminderTime(time: string) {
+  if (!/^\d{2}:\d{2}$/.test(time)) throw new Error('提醒时间无效');
   const [hourText, minuteText] = time.split(':');
   const hour = Number(hourText);
   const minute = Number(minuteText);
@@ -71,12 +72,13 @@ function parseReminderTime(time: string) {
   return { hour, minute };
 }
 
-export async function getReminderSettings(): Promise<ReminderSettings> {
+async function readStoredSettings(): Promise<ReminderSettings> {
   const stored = await AsyncStorage.getItem(REMINDER_SETTINGS_KEY);
   if (!stored) return defaultSettings;
 
   try {
     const parsed = JSON.parse(stored) as Partial<ReminderSettings>;
+    parseReminderTime(typeof parsed.time === 'string' ? parsed.time : defaultSettings.time);
     return {
       enabled: parsed.enabled === true,
       notificationId: typeof parsed.notificationId === 'string' ? parsed.notificationId : '',
@@ -87,15 +89,42 @@ export async function getReminderSettings(): Promise<ReminderSettings> {
   }
 }
 
-export async function scheduleDailyReminder(time: string) {
+async function getScheduledReminders(current: ReminderSettings) {
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  return scheduled.filter((request) => request.identifier === current.notificationId
+    || request.content.data?.source === 'daily-reminder');
+}
+
+export async function getReminderSettings(): Promise<ReminderSettings> {
+  const current = await readStoredSettings();
+  const reminders = await getScheduledReminders(current);
+  const scheduled = reminders.find((request) => request.identifier === current.notificationId) || reminders[0];
+  if (!scheduled) return { ...current, enabled: false, notificationId: '' };
+  const scheduledTime = scheduled.content.data?.reminderTime;
+  return {
+    enabled: true,
+    notificationId: scheduled.identifier,
+    time: typeof scheduledTime === 'string' && /^\d{2}:\d{2}$/.test(scheduledTime) ? scheduledTime : current.time,
+  };
+}
+
+let reminderOperation: Promise<unknown> = Promise.resolve();
+function serializeReminderChange<T>(action: () => Promise<T>): Promise<T> {
+  const next = reminderOperation.then(action, action);
+  reminderOperation = next.catch(() => undefined);
+  return next;
+}
+
+async function scheduleReminder(time: string) {
   const { hour, minute } = parseReminderTime(time);
   await prepareNotificationPermission();
 
   const current = await getReminderSettings();
+  const previousReminders = await getScheduledReminders(current);
   const notificationId = await Notifications.scheduleNotificationAsync({
     content: {
       body: '给今天留一个小小的信号：我还在，挺好。',
-      data: { destination: 'today', source: 'daily-reminder' },
+      data: { destination: 'today', source: 'daily-reminder', reminderTime: time },
       sound: 'default',
       title: '今天，还在吗？',
     },
@@ -109,23 +138,38 @@ export async function scheduleDailyReminder(time: string) {
 
   const nextSettings: ReminderSettings = { enabled: true, notificationId, time };
   try {
+    for (const previous of previousReminders) {
+      await Notifications.cancelScheduledNotificationAsync(previous.identifier);
+    }
     await AsyncStorage.setItem(REMINDER_SETTINGS_KEY, JSON.stringify(nextSettings));
   } catch (error) {
-    await Notifications.cancelScheduledNotificationAsync(notificationId).catch(() => undefined);
+    try {
+      await Notifications.cancelScheduledNotificationAsync(notificationId);
+    } catch {
+      // Still discoverable by its source tag; the next reconciliation/disable
+      // scans native scheduled notifications instead of trusting a lost ID.
+      throw new Error('提醒设置未完成，请重新打开提醒设置后重试');
+    }
     throw error;
-  }
-  if (current.notificationId && current.notificationId !== notificationId) {
-    await Notifications.cancelScheduledNotificationAsync(current.notificationId).catch(() => undefined);
   }
   return nextSettings;
 }
 
-export async function disableDailyReminder() {
+async function disableReminder() {
   const current = await getReminderSettings();
-  if (current.notificationId) {
-    await Notifications.cancelScheduledNotificationAsync(current.notificationId).catch(() => undefined);
+  for (const request of await getScheduledReminders(current)) {
+    // A cancellation failure must not erase the only reference or report success.
+    await Notifications.cancelScheduledNotificationAsync(request.identifier);
   }
   const nextSettings: ReminderSettings = { enabled: false, notificationId: '', time: current.time };
   await AsyncStorage.setItem(REMINDER_SETTINGS_KEY, JSON.stringify(nextSettings));
   return nextSettings;
+}
+
+export function scheduleDailyReminder(time: string) {
+  return serializeReminderChange(() => scheduleReminder(time));
+}
+
+export function disableDailyReminder() {
+  return serializeReminderChange(disableReminder);
 }

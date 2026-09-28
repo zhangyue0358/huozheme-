@@ -1,0 +1,27 @@
+{
+  "name": "huozhema-domestic-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "check": "node --check scripts/check-business-isolated.js && node --check src/server.js && node --check src/schemaCheck.js && node --check scripts/check-deployment.js && node --check scripts/check-auth-regression.js && node --check scripts/check-auth-isolated.js && node --check scripts/check-sms-regression.js && node --check scripts/process-account-deletion-retention.js && node --check scripts/apply-database-patch.js && node --check scripts/check-authenticated-api.js && node --check scripts/check-password-auth.js && node --check scripts/check-alive-reply-acknowledgement.js && node --check scripts/check-weather-streak.js && node --check scripts/check-daily-quote-lock.js",
+    "check:authenticated-api": "node scripts/check-authenticated-api.js",
+    "check:alive-reply-acknowledgement": "node scripts/check-alive-reply-acknowledgement.js",
+    "check:weather-streak": "node scripts/check-weather-streak.js",
+    "check:daily-quote-lock": "node scripts/check-daily-quote-lock.js",
+    "check:password-auth": "node scripts/check-password-auth.js",
+    "check:deployment": "node scripts/check-deployment.js",
+    "check:auth-regression": "node scripts/check-auth-regression.js",
+    "check:auth-isolated": "node scripts/check-auth-isolated.js",
+    "check:business-isolated": "node scripts/check-business-isolated.js",
+    "db:apply-patch": "node scripts/apply-database-patch.js",
+    "admin:process-account-deletion": "node scripts/process-account-deletion-retention.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

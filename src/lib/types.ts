@@ -3,8 +3,9 @@ export type Friend = {
   name: string;
   avatarUrl: string;
   phoneMasked: string;
-  days: number;
-  streak: number;
+  days: number | null;
+  streak: number | null;
+  statusVisible?: boolean;
   aliveToday: boolean;
   lastSeen: string;
   mood: string;
@@ -64,6 +65,7 @@ export type DiaryEntry = {
 
 export type AppSnapshot = {
   aliveDays: number;
+  checkinDate: string;
   checkedIn: boolean;
   diaryEntries: DiaryEntry[];
   aliveReplies: IncomingPoke[];

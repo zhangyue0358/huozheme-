@@ -8,6 +8,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
+    "check:client-auth": "node scripts/check-client-auth-errors.mjs",
+    "check:client-business": "node scripts/check-client-business.mjs",
     "check:domestic-api": "node scripts/check-domestic-api.mjs",
     "check:release-config": "node scripts/check-release-config.mjs",
     "check:screenshots": "node scripts/check-store-screenshots.mjs",
