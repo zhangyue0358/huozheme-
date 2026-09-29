@@ -33,7 +33,7 @@
     ],
     "ios": {
       "bundleIdentifier": "com.huozhema.app",
-      "buildNumber": "22",
+      "buildNumber": "23",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSFaceIDUsageDescription": "允许“在否”使用 Face ID 安全登录。",

@@ -3,6 +3,17 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
 
+const appSource = fs.readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+const appAst = ts.createSourceFile('App.tsx', appSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+const authScreen = appAst.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'AuthScreen');
+assert.ok(authScreen, '登录页组件必须存在');
+const authScreenSource = authScreen.getText(appAst);
+assert.doesNotMatch(authScreenSource, /onUseDemo|演示模式/, '登录页不得提供演示模式入口');
+for (const label of ['密码登录', '验证码设置密码', '使用 Face ID 登录（无需输入密码）', '同意隐私政策、用户协议和注册协议']) {
+  assert.ok(authScreenSource.includes(label), `登录页必须保留：${label}`);
+}
+console.log('PASS: 登录页已移除演示入口，保留密码、验证码、Face ID 和协议同意入口');
+
 const stored = new Map();
 const storage = {
   multiRemove: async keys => { keys.forEach(key=>stored.delete(key)); },

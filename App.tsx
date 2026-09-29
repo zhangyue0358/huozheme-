@@ -1317,7 +1317,7 @@ export default function App() {
   }
 
   if (!demoMode && hasDomesticApiConfig && !session) {
-    return <AuthScreen onSignedIn={setSession} onUseDemo={() => setDemoMode(true)} />;
+    return <AuthScreen onSignedIn={setSession} />;
   }
 
   if (!demoMode && !hasDomesticApiConfig) {
@@ -1551,10 +1551,8 @@ function LaunchScreen({ onUseDemo }: { onUseDemo: () => void }) {
 
 function AuthScreen({
   onSignedIn,
-  onUseDemo,
 }: {
   onSignedIn: (session: DomesticSession) => void;
-  onUseDemo: () => void;
 }) {
   const [loginMode, setLoginMode] = useState<'password' | 'code'>('password');
   const [code, setCode] = useState('');
@@ -1932,10 +1930,6 @@ function AuthScreen({
               </Pressable>
             ) : null}
           </View>
-
-          <Pressable style={styles.secondaryButton} onPress={onUseDemo}>
-            <Text style={styles.secondaryButtonText}>先看演示模式</Text>
-          </Pressable>
 
           <View style={styles.authAgreementRow}>
             <Pressable
