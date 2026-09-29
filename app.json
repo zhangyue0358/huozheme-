@@ -33,7 +33,7 @@
     ],
     "ios": {
       "bundleIdentifier": "com.huozhema.app",
-      "buildNumber": "23",
+      "buildNumber": "24",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSFaceIDUsageDescription": "允许“在否”使用 Face ID 安全登录。",
@@ -44,7 +44,7 @@
     },
     "android": {
       "package": "com.huozhema.app",
-      "versionCode": 22,
+      "versionCode": 24,
       "permissions": [
         "android.permission.READ_MEDIA_IMAGES"
       ],

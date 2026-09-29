@@ -71,6 +71,8 @@ type TabIconKey = TabKey;
 type SaveState = 'idle' | 'saving' | 'saved';
 
 const SMS_RESEND_SECONDS = 60;
+const APP_FILING_NUMBER = '京ICP备2026053212号-1A';
+const APP_FILING_QUERY_URL = 'https://beian.miit.gov.cn/';
 const APP_SHARE_URL = process.env.EXPO_PUBLIC_APP_SHARE_URL?.trim() || 'https://huozhema.senbeikeji.cn/';
 const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL?.trim() || 'https://huozhema.senbeikeji.cn/privacy.html';
 const TERMS_OF_SERVICE_URL = process.env.EXPO_PUBLIC_TERMS_OF_SERVICE_URL?.trim() || 'https://huozhema.senbeikeji.cn/terms.html';
@@ -3374,6 +3376,15 @@ function ProfileScreen({
           <Text style={styles.settingText}>{signingOut ? '退出中...' : isDemo ? '退出演示模式' : '退出登录'}</Text>
         </Pressable>
       </View>
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel={`APP备案号 ${APP_FILING_NUMBER}，查询备案信息`}
+        style={styles.appFilingLink}
+        onPress={() => void openExternalUrl(APP_FILING_QUERY_URL, 'APP备案信息')}
+      >
+        <Text style={styles.appFilingText}>APP备案号</Text>
+        <Text style={styles.appFilingText}>{APP_FILING_NUMBER}</Text>
+      </Pressable>
     </View>
   );
 }
@@ -5202,6 +5213,18 @@ const styles = StyleSheet.create({
   },
   settingsList: {
     gap: 10,
+  },
+  appFilingLink: {
+    alignItems: 'center',
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  appFilingText: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 20,
+    textAlign: 'center',
   },
   diaryListPanel: {
     backgroundColor: colors.panel,

@@ -16,6 +16,34 @@ function appFunction(name) {
 }
 const results = [];
 
+// Render the actual filing link so the displayed number and press action stay in sync.
+const filingDeclarations = tree.statements.filter(n => ts.isVariableStatement(n)
+  && n.declarationList.declarations.some(d => ['APP_FILING_NUMBER', 'APP_FILING_QUERY_URL'].includes(d.name.getText(tree))));
+const profile = tree.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === 'ProfileScreen');
+let filingLink;
+function findFilingLink(node) {
+  if (ts.isJsxElement(node) && node.openingElement.tagName.getText(tree) === 'Pressable'
+    && node.openingElement.attributes.getText(tree).includes('APP_FILING_NUMBER')) filingLink = node;
+  ts.forEachChild(node, findFilingLink);
+}
+findFilingLink(profile);
+assert.ok(filingLink, 'ProfileScreen must expose the APP filing link');
+const openedFilingUrls = [];
+const filingContext = { exports: {}, Pressable: 'Pressable', Text: 'Text', styles: {},
+  require: name => {
+    assert.equal(name, 'react/jsx-runtime');
+    const jsx = (type, props) => ({ type, props });
+    return { jsx, jsxs: jsx };
+  },
+  openExternalUrl: (url, label) => openedFilingUrls.push({ url, label }),
+};
+vm.runInNewContext(compile(`${filingDeclarations.map(n => n.getText(tree)).join('\n')}\nexports.link = (${filingLink.getText(tree)});`), filingContext);
+assert.equal(filingContext.exports.link.props.accessibilityRole, 'link');
+assert.equal(filingContext.exports.link.props.children[1].props.children, '京ICP备2026053212号-1A');
+filingContext.exports.link.props.onPress();
+assert.deepEqual(openedFilingUrls, [{ url: 'https://beian.miit.gov.cn/', label: 'APP备案信息' }]);
+results.push('我页面显示真实 APP 备案号，点击打开工信部查询');
+
 // Run the real account-scope effect, not a copy of its reset logic.
 const reset = app.body.statements.find(n => ts.isExpressionStatement(n) && ts.isCallExpression(n.expression)
   && n.expression.expression.getText(tree) === 'useEffect'
