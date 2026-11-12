@@ -4,6 +4,7 @@ import { URL } from 'node:url';
 import { Pool } from 'pg';
 import { loadEnvFile } from './loadEnv.js';
 import { assertDatabaseSchema } from './schemaCheck.js';
+import { parseFriendRemark, saveFriendRemark } from './friendRemarks.js';
 
 loadEnvFile();
 
@@ -807,6 +808,7 @@ async function loadSnapshot(req, res) {
     ),
     db.query(
       `select f.id, f.requester_id, f.addressee_id, f.status, f.accepted_at, f.created_at,
+              own_remark.remark as own_remark,
               requester.nickname as requester_nickname,
               requester.avatar_color as requester_color,
               requester_avatar.object_key as requester_avatar_object_key,
@@ -820,6 +822,7 @@ async function loadSnapshot(req, res) {
               addressee.started_on as addressee_started_on,
               addressee_user.phone_e164 as addressee_phone
        from friendships f
+       left join friend_remarks own_remark on own_remark.friendship_id = f.id and own_remark.owner_id = $1
        join profiles requester on requester.user_id = f.requester_id
        left join profile_avatars requester_avatar on requester_avatar.user_id = f.requester_id
        join app_users requester_user on requester_user.id = f.requester_id
@@ -899,6 +902,7 @@ async function loadSnapshot(req, res) {
         avatar_object_key: isRequester ? row.addressee_avatar_object_key : row.requester_avatar_object_key,
         id: isRequester ? row.addressee_id : row.requester_id,
         nickname: isRequester ? row.addressee_nickname : row.requester_nickname,
+        remark: row.own_remark || '',
         phone_e164: isRequester ? row.addressee_phone : row.requester_phone,
         show_status_to_friends: isRequester ? row.addressee_show_status : row.requester_show_status,
         started_on: isRequester ? row.addressee_started_on : row.requester_started_on,
@@ -939,6 +943,7 @@ async function loadSnapshot(req, res) {
       lastSeen: friend.show_status_to_friends ? formatLastSeen(rows) : '不展示状态',
       mood: friend.show_status_to_friends ? (todays?.status_text || rows[0]?.status_text || '还没有向你确认今天的状态。') : '',
       name: friend.nickname,
+      remark: friend.remark,
       phoneMasked: maskPhone(friend.phone_e164),
       statusVisible: Boolean(friend.show_status_to_friends),
       streak: friend.show_status_to_friends ? calculateStreak(rows) : null,
@@ -961,6 +966,7 @@ async function loadSnapshot(req, res) {
         direction: incoming ? 'incoming' : 'outgoing',
         id: String(row.id),
         name: incoming ? row.requester_nickname : row.addressee_nickname,
+        remark: row.own_remark || '',
         phoneMasked: maskPhone(incoming ? row.requester_phone : row.addressee_phone),
       };
     });
@@ -1450,6 +1456,7 @@ async function patchTodo(req, res, todoId) {
 async function sendFriendRequest(req, res) {
   const user = await requireUser(req);
   const body = await parseJson(req);
+  const remark = parseFriendRemark(body);
   const phone = normalizePhone(body.phone);
   const db = requireDatabase();
 
@@ -1498,6 +1505,7 @@ async function sendFriendRequest(req, res) {
        returning id`,
       [user.id, target.rows[0].id],
     );
+    await saveFriendRemark(client, insert.rows[0].id, user.id, remark);
     await client.query('update friend_request_attempts set success = true where id = $1', [attemptId]);
     await client.query('commit');
     sendJson(res, 200, { ok: true, requestId: String(insert.rows[0].id) });
@@ -1515,14 +1523,15 @@ async function sendFriendRequest(req, res) {
 
 async function acceptFriendRequest(req, res, requestId) {
   const user = await requireUser(req);
+  const remark = parseFriendRemark(await parseJson(req));
   const db = requireDatabase();
   const client = await db.connect();
   try {
     await client.query('begin');
     const request = await client.query(
-      `select requester_id, addressee_id
+      `select requester_id, addressee_id, status
        from friendships
-       where id = $1 and addressee_id = $2 and status = 'pending'
+       where id = $1 and addressee_id = $2 and status in ('pending', 'accepted')
        for update`,
       [Number(requestId), user.id],
     );
@@ -1530,6 +1539,12 @@ async function acceptFriendRequest(req, res, requestId) {
       const error = new Error('没有找到这条好友申请');
       error.statusCode = 404;
       throw error;
+    }
+    // A lost response may cause a retry. Do not erase signals or newer remarks.
+    if (request.rows[0].status === 'accepted') {
+      await client.query('commit');
+      sendJson(res, 200, { ok: true });
+      return;
     }
     await client.query(
       `delete from alive_reply_acknowledgements
@@ -1545,8 +1560,37 @@ async function acceptFriendRequest(req, res, requestId) {
       [request.rows[0].requester_id, request.rows[0].addressee_id],
     );
     await client.query(`update friendships set status = 'accepted', accepted_at = now() where id = $1`, [Number(requestId)]);
+    await saveFriendRemark(client, requestId, user.id, remark);
     await client.query('commit');
     sendJson(res, 200, { ok: true });
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function updateFriendRemark(req, res, friendId) {
+  const user = await requireUser(req);
+  const remark = parseFriendRemark(await parseJson(req), true);
+  const client = await requireDatabase().connect();
+  try {
+    await client.query('begin');
+    // Lock the relationship so deletion and a remark update cannot race.
+    const { rows } = await client.query(
+      `select id from friendships where status = 'accepted'
+       and ((requester_id = $1 and addressee_id = $2) or (requester_id = $2 and addressee_id = $1))
+       for update`, [user.id, friendId],
+    );
+    if (!rows[0]) {
+      const error = new Error('你们还不是好友');
+      error.statusCode = 403;
+      throw error;
+    }
+    await saveFriendRemark(client, rows[0].id, user.id, remark);
+    await client.query('commit');
+    sendJson(res, 200, { ok: true, remark });
   } catch (error) {
     await client.query('rollback');
     throw error;
@@ -1755,6 +1799,8 @@ async function route(req, res) {
   if (req.method === 'POST' && acceptMatch) return acceptFriendRequest(req, res, acceptMatch[1]);
   const friendMatch = path.match(/^\/friends\/([0-9a-f-]+)$/i);
   if (req.method === 'DELETE' && friendMatch) return deleteFriend(req, res, friendMatch[1]);
+  const remarkMatch = path.match(/^\/friends\/([0-9a-f-]+)\/remark$/i);
+  if (req.method === 'PUT' && remarkMatch) return updateFriendRemark(req, res, remarkMatch[1]);
   const pokeMatch = path.match(/^\/friends\/([0-9a-f-]+)\/poke$/i);
   if (req.method === 'POST' && pokeMatch) return pokeFriend(req, res, pokeMatch[1]);
   const replyMatch = path.match(/^\/friends\/([0-9a-f-]+)\/alive-reply$/i);

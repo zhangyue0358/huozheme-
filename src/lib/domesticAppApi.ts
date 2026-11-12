@@ -37,12 +37,14 @@ export async function loadDomesticAppSnapshot(): Promise<AppSnapshot> {
     friendRequests: Array.isArray(snapshot.friendRequests)
       ? snapshot.friendRequests.map((request) => ({
           ...request,
+          remark: typeof request.remark === 'string' ? request.remark : '',
           avatarUrl: typeof request.avatarUrl === 'string' ? request.avatarUrl : '',
         }))
       : [],
     friends: Array.isArray(snapshot.friends)
       ? snapshot.friends.map((friend) => ({
           ...friend,
+          remark: typeof friend.remark === 'string' ? friend.remark : '',
           avatarUrl: typeof friend.avatarUrl === 'string' ? friend.avatarUrl : '',
         }))
       : [],
@@ -265,15 +267,16 @@ export async function saveDomesticPersonalMessages(
   return Array.isArray(result.personalMessages) ? result.personalMessages : [];
 }
 
-export async function sendDomesticFriendRequest(phone: string) {
+export async function sendDomesticFriendRequest(phone: string, remark?: string) {
   await domesticRequest('/friends/request', {
-    body: { phone },
+    body: { phone, remark },
     method: 'POST',
   });
 }
 
-export async function acceptDomesticFriendRequest(requestId: string) {
+export async function acceptDomesticFriendRequest(requestId: string, remark?: string) {
   await domesticRequest(`/friends/requests/${requestId}/accept`, {
+    body: { remark },
     method: 'POST',
   });
 }
@@ -281,6 +284,13 @@ export async function acceptDomesticFriendRequest(requestId: string) {
 export async function deleteDomesticFriendship(friendId: string) {
   await domesticRequest(`/friends/${friendId}`, {
     method: 'DELETE',
+  });
+}
+
+export async function updateDomesticFriendRemark(friendId: string, remark: string) {
+  return domesticRequest<{ ok: boolean; remark: string }>(`/friends/${friendId}/remark`, {
+    body: { remark },
+    method: 'PUT',
   });
 }
 

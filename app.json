@@ -3,7 +3,7 @@
     "name": "在否",
     "slug": "huozhema-app",
     "description": "一个轻量的每日确认与好友状态 App：确认今天还在，记下心情、随笔、照片和今天最想做的三件事。",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -33,7 +33,7 @@
     ],
     "ios": {
       "bundleIdentifier": "com.huozhema.app",
-      "buildNumber": "24",
+      "buildNumber": "26",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSFaceIDUsageDescription": "允许“在否”使用 Face ID 安全登录。",
@@ -44,7 +44,7 @@
     },
     "android": {
       "package": "com.huozhema.app",
-      "versionCode": 24,
+      "versionCode": 26,
       "permissions": [
         "android.permission.READ_MEDIA_IMAGES"
       ],

@@ -3,13 +3,7 @@ workflows:
     name: iOS TestFlight IPA (EAS local)
     instance_type: mac_mini_m2
     max_build_duration: 120
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: codemagic/ios-build-22-20260924
-          include: true
-          source: true
+    # Start manually after deploying the friend-remarks database/API update.
     environment:
       groups:
         - expo_credentials
@@ -21,6 +15,7 @@ workflows:
         script: |
           npm ci
           npm run typecheck
+          npm run check:friend-remarks
       - name: Build signed iOS IPA using existing Expo credentials
         script: |
           : "${EXPO_TOKEN:?Add EXPO_TOKEN as a secret in the expo_credentials group}"

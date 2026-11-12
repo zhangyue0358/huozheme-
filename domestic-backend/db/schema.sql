@@ -129,6 +129,16 @@ on friendships (requester_id, status);
 create index if not exists friendships_addressee_idx
 on friendships (addressee_id, status);
 
+create table if not exists friend_remarks (
+  friendship_id bigint not null references friendships(id) on delete cascade,
+  owner_id uuid not null references app_users(id) on delete cascade,
+  remark text not null check (char_length(remark) between 1 and 20),
+  updated_at timestamptz not null default now(),
+  primary key (friendship_id, owner_id)
+);
+
+create index if not exists friend_remarks_owner_idx on friend_remarks (owner_id);
+
 create table if not exists friend_request_attempts (
   id bigint generated always as identity primary key,
   requester_id uuid not null references app_users(id) on delete cascade,

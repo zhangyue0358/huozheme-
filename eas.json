@@ -22,7 +22,7 @@
       }
     },
     "production": {
-      "autoIncrement": true,
+      "autoIncrement": false,
       "env": {
         "EXPO_PUBLIC_DOMESTIC_API_URL": "https://api.huozhema.senbeikeji.cn",
         "EXPO_PUBLIC_APP_SHARE_URL": "https://huozhema.senbeikeji.cn/",

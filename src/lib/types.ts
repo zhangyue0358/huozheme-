@@ -1,6 +1,7 @@
 export type Friend = {
   id: string;
   name: string;
+  remark?: string;
   avatarUrl: string;
   phoneMasked: string;
   days: number | null;
@@ -15,6 +16,7 @@ export type Friend = {
 export type FriendRequest = {
   id: string;
   name: string;
+  remark?: string;
   avatarUrl: string;
   phoneMasked: string;
   color: string;

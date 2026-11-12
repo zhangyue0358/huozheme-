@@ -7,6 +7,7 @@ import {
   Alert,
   Animated,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -38,6 +39,7 @@ import {
   sendDomesticFriendRequest,
   updateDomesticPrivacySetting,
   updateDomesticProfile,
+  updateDomesticFriendRemark,
   updateDomesticTodoDone,
   updateDomesticTodoImportant,
   uploadDomesticJournalPhoto,
@@ -63,6 +65,8 @@ import {
 } from './src/lib/domesticClient';
 import { demoSnapshot } from './src/lib/mockData';
 import { keepStableSnapshotPhotos } from './src/lib/snapshotSafety';
+import { friendDisplayName } from './src/lib/friendRemarks';
+import { FriendName, FriendRemarkDialog, type FriendRemarkTarget } from './src/components/FriendRemarks';
 import { disableDailyReminder, getReminderSettings, scheduleDailyReminder } from './src/lib/reminderNotifications';
 import type { AppSnapshot, DiaryEntry, Friend, FriendRequest, IncomingPoke, PersonalMessage, Profile, Todo } from './src/lib/types';
 
@@ -1041,29 +1045,57 @@ export default function App() {
     return [todayEntry, ...historyWithoutToday];
   }, [checkedIn, diaryEntries, journalPhotoUrls, journalText, savedTodayQuoteText, statusText, todos, weatherText]);
 
-  async function handleSendFriendRequest(phone: string) {
+  async function handleSendFriendRequest(phone: string, remark: string): Promise<boolean> {
+    if (!isCurrentAccount()) return false;
     if (!userId || demoMode) {
       Alert.alert('演示模式', '使用手机号登录后，就可以添加真实好友。');
-      return;
+      return false;
     }
 
     try {
-      await sendDomesticFriendRequest(phone);
-      await refreshSnapshot();
+      await sendDomesticFriendRequest(phone, remark);
+      if (!isCurrentAccount()) return false;
+      await refreshSnapshot().catch(() => undefined);
+      if (!isCurrentAccount()) return false;
       showAppToast('好友申请已发送，等对方接受。');
+      return true;
     } catch (error) {
-      Alert.alert('添加失败', error instanceof Error ? error.message : '请稍后再试');
+      if (isCurrentAccount()) Alert.alert('添加失败', error instanceof Error ? error.message : '请稍后再试');
+      return false;
     }
   }
 
-  async function handleAcceptFriendRequest(requestId: string) {
-    if (!userId || demoMode) return;
+  async function handleAcceptFriendRequest(requestId: string, remark: string): Promise<boolean> {
+    if (!userId || demoMode || !isCurrentAccount()) return false;
 
     try {
-      await acceptDomesticFriendRequest(requestId);
-      await refreshSnapshot();
+      await acceptDomesticFriendRequest(requestId, remark);
+      if (!isCurrentAccount()) return false;
+      setSnapshot((current) => ({ ...current, friendRequests: current.friendRequests.filter((item) => item.id !== requestId) }));
+      await refreshSnapshot().catch(() => undefined);
+      if (!isCurrentAccount()) return false;
+      showAppToast('已成为好友，备注仅自己可见。');
+      return true;
     } catch (error) {
-      Alert.alert('接受失败', error instanceof Error ? error.message : '请稍后再试');
+      if (isCurrentAccount()) Alert.alert('接受失败', error instanceof Error ? error.message : '请稍后再试');
+      return false;
+    }
+  }
+
+  async function handleUpdateFriendRemark(friendId: string, remark: string): Promise<boolean> {
+    if (!userId || demoMode || !isCurrentAccount()) return false;
+    try {
+      const saved = await updateDomesticFriendRemark(friendId, remark);
+      if (!isCurrentAccount()) return false;
+      // Invalidate an older in-flight snapshot before applying the acknowledged value.
+      snapshotSequence.current += 1;
+      setSnapshot((current) => ({ ...current, friends: current.friends.map((friend) =>
+        friend.id === friendId ? { ...friend, remark: saved.remark } : friend) }));
+      showAppToast(saved.remark ? '备注已保存，仅自己可见。' : '已清除备注，恢复显示对方昵称。');
+      return true;
+    } catch (error) {
+      if (isCurrentAccount()) Alert.alert('备注保存失败', error instanceof Error ? error.message : '请稍后再试');
+      return false;
     }
   }
 
@@ -1139,7 +1171,7 @@ export default function App() {
       return;
     }
 
-    Alert.alert('删除好友', `确定删除 ${friend.name} 吗？删除后需要重新发送好友申请。`, [
+    Alert.alert('删除好友', `确定删除 ${friendDisplayName(friend)} 吗？删除后需要重新发送好友申请。`, [
       { text: '取消', style: 'cancel' },
       {
         text: '删除',
@@ -1387,6 +1419,7 @@ export default function App() {
           )}
           {tab === 'friends' && (
             <FriendsScreen
+              key={accountScope}
               aliveReplyNotices={visibleAliveReplyNotices}
               friendRequests={friendRequests}
               friends={friends}
@@ -1398,6 +1431,7 @@ export default function App() {
               onReplyPoke={handleReplyPoke}
               onSendRequest={handleSendFriendRequest}
               onShareInvite={handleShareInvite}
+              onUpdateRemark={handleUpdateFriendRemark}
               pokedFriendIds={pokedFriendIds}
               repliedFriendIds={repliedFriendIds}
             />
@@ -2327,6 +2361,7 @@ function FriendsScreen({
   onReplyPoke,
   onSendRequest,
   onShareInvite,
+  onUpdateRemark,
   pokedFriendIds,
   repliedFriendIds,
 }: {
@@ -2334,17 +2369,19 @@ function FriendsScreen({
   friendRequests: FriendRequest[];
   friends: Friend[];
   incomingPokes: IncomingPoke[];
-  onAcceptRequest: (requestId: string) => void;
+  onAcceptRequest: (requestId: string, remark: string) => Promise<boolean>;
   onDeleteFriend: (friend: Friend) => void;
   onDismissReply: (replyId: string) => void;
   onPokeFriend: (friend: Friend) => void;
   onReplyPoke: (poke: IncomingPoke) => void;
-  onSendRequest: (phone: string) => void;
+  onSendRequest: (phone: string, remark: string) => Promise<boolean>;
   onShareInvite: () => void;
+  onUpdateRemark: (friendId: string, remark: string) => Promise<boolean>;
   pokedFriendIds: Set<string>;
   repliedFriendIds: Set<string>;
 }) {
   const [friendDraft, setFriendDraft] = useState('');
+  const [remarkTarget, setRemarkTarget] = useState<FriendRemarkTarget | null>(null);
   const isConfirmed = (friend: Friend) => repliedFriendIds.has(friend.id);
   const activeCount = friends.filter(isConfirmed).length;
   const confirmedFriends = friends.filter(isConfirmed);
@@ -2355,8 +2392,27 @@ function FriendsScreen({
   function submitRequest() {
     const value = friendDraft.trim();
     if (!value) return;
-    onSendRequest(value);
-    setFriendDraft('');
+    const phone = value.replace(/[\s-]/g, '').replace(/^(\+86|0086)/, '');
+    if (!/^1[3-9]\d{9}$/.test(phone)) {
+      Alert.alert('手机号格式不正确', '请输入好友的 11 位手机号。');
+      return;
+    }
+    Keyboard.dismiss();
+    setRemarkTarget({ mode: 'send', id: phone, phone, name: '' });
+  }
+
+  async function submitRemark(remark: string) {
+    if (!remarkTarget || remarkTarget.mode === 'menu') return false;
+    if (remarkTarget.mode === 'edit') return onUpdateRemark(remarkTarget.id, remark);
+    if (remarkTarget.mode === 'accept') return onAcceptRequest(remarkTarget.id, remark);
+    const saved = await onSendRequest(remarkTarget.phone, remark);
+    if (saved) setFriendDraft('');
+    return saved;
+  }
+
+  function openFriendMenu(friend: Friend) {
+    Keyboard.dismiss();
+    setRemarkTarget({ mode: 'menu', id: friend.id, name: friend.name, phone: friend.phoneMasked, remark: friend.remark });
   }
 
   return (
@@ -2408,8 +2464,8 @@ function FriendsScreen({
                   <Text style={styles.avatarText}>{request.name.slice(0, 1)}</Text>
                 )}
               </View>
-              <Text style={styles.requestName}>{request.name}</Text>
-              <Pressable style={styles.tinyButton} onPress={() => onAcceptRequest(request.id)}>
+              <FriendName name={request.name} remark={request.remark} style={styles.requestName} />
+              <Pressable style={styles.tinyButton} onPress={() => setRemarkTarget({ mode: 'accept', id: request.id, name: request.name, phone: request.phoneMasked, remark: request.remark })}>
                 <Text style={styles.tinyButtonText}>接受</Text>
               </Pressable>
             </View>
@@ -2429,7 +2485,7 @@ function FriendsScreen({
                   <Text style={styles.avatarText}>{request.name.slice(0, 1)}</Text>
                 )}
               </View>
-              <Text style={styles.requestName}>{request.name}</Text>
+              <FriendName name={request.name} remark={request.remark} style={styles.requestName} />
               <Text style={styles.requestStatus}>等待中</Text>
             </View>
           ))}
@@ -2445,7 +2501,7 @@ function FriendsScreen({
                 <Text style={styles.avatarText}>{poke.friendName.slice(0, 1)}</Text>
               </View>
               <View style={styles.pokeNoticeBody}>
-                <Text style={styles.requestName}>{poke.friendName}</Text>
+                <FriendName name={friends.find((friend) => friend.id === poke.friendId)?.name || poke.friendName} remark={friends.find((friend) => friend.id === poke.friendId)?.remark} style={styles.requestName} />
                 <Text style={styles.pokeNoticeMeta}>戳了你一下：还在不？</Text>
               </View>
               <Pressable style={styles.tinyButton} onPress={() => onReplyPoke(poke)}>
@@ -2465,7 +2521,7 @@ function FriendsScreen({
                 <Text style={styles.avatarText}>{reply.friendName.slice(0, 1)}</Text>
               </View>
               <View style={styles.pokeNoticeBody}>
-                <Text style={styles.requestName}>{reply.friendName}</Text>
+                <FriendName name={friends.find((friend) => friend.id === reply.friendId)?.name || reply.friendName} remark={friends.find((friend) => friend.id === reply.friendId)?.remark} style={styles.requestName} />
                 <Text style={styles.pokeNoticeMeta}>回了你一句：我还在。</Text>
               </View>
               <Pressable style={styles.tinyButtonGhost} onPress={() => onDismissReply(reply.id)}>
@@ -2502,6 +2558,7 @@ function FriendsScreen({
               friend={friend}
               onDeleteFriend={onDeleteFriend}
               onPokeFriend={onPokeFriend}
+              onMore={openFriendMenu}
               poked={pokedFriendIds.has(friend.id)}
               replied={repliedFriendIds.has(friend.id)}
             />
@@ -2518,6 +2575,7 @@ function FriendsScreen({
               friend={friend}
               onDeleteFriend={onDeleteFriend}
               onPokeFriend={onPokeFriend}
+              onMore={openFriendMenu}
               poked={pokedFriendIds.has(friend.id)}
               replied={repliedFriendIds.has(friend.id)}
             />
@@ -2525,6 +2583,10 @@ function FriendsScreen({
         </View>
       )}
 
+      {remarkTarget && (
+        <FriendRemarkDialog key={remarkTarget.id} target={remarkTarget} onSubmit={submitRemark}
+          onEdit={() => setRemarkTarget({ ...remarkTarget, mode: 'edit' })} onClose={() => setRemarkTarget(null)} />
+      )}
     </View>
   );
 }
@@ -2533,12 +2595,14 @@ function FriendRow({
   friend,
   onDeleteFriend,
   onPokeFriend,
+  onMore,
   poked,
   replied,
 }: {
   friend: Friend;
   onDeleteFriend: (friend: Friend) => void;
   onPokeFriend: (friend: Friend) => void;
+  onMore: (friend: Friend) => void;
   poked: boolean;
   replied: boolean;
 }) {
@@ -2601,7 +2665,7 @@ function FriendRow({
         </View>
         <View style={styles.friendBody}>
           <View style={styles.friendTop}>
-            <Text numberOfLines={1} style={styles.friendName}>{friend.name}</Text>
+            <FriendName name={friend.name} remark={friend.remark} style={styles.friendName} />
             <Text style={[styles.badge, statusBadgeStyle]}>{statusBadgeText}</Text>
           </View>
           <Text style={styles.friendPhone}>{friend.phoneMasked}</Text>
@@ -2617,9 +2681,16 @@ function FriendRow({
             {friend.statusVisible === false ? '状态已隐藏' : `${friend.days ?? 0} 天 · 连续 ${friend.streak ?? 0} 天 · ${lastSeenText}`}
           </Text>
         </View>
-        <Pressable disabled={poked} style={[styles.pokeButton, poked && styles.pokeButtonDone]} onPress={() => onPokeFriend(friend)}>
-          <Text numberOfLines={1} style={[styles.pokeButtonText, poked && styles.pokeButtonTextDone]}>{poked ? '已戳' : '戳一下'}</Text>
-        </Pressable>
+        <View style={styles.friendMoreActions}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`${friendDisplayName(friend)}的更多操作`} style={styles.friendMoreButton} onPress={() => { closeDelete(); onMore(friend); }}>
+            <View style={styles.friendMoreDots}>
+              {[0, 1, 2].map((dot) => <View key={dot} style={styles.friendMoreDot} />)}
+            </View>
+          </Pressable>
+          <Pressable disabled={poked} style={[styles.pokeButton, poked && styles.pokeButtonDone]} onPress={() => onPokeFriend(friend)}>
+            <Text numberOfLines={1} style={[styles.pokeButtonText, poked && styles.pokeButtonTextDone]}>{poked ? '已戳' : '戳一下'}</Text>
+          </Pressable>
+        </View>
       </Animated.View>
     </View>
   );
@@ -4629,6 +4700,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     minWidth: 0,
   },
+  friendMoreActions: { alignItems: 'center', flexShrink: 0, gap: 2 },
+  friendMoreButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  friendMoreDots: { flexDirection: 'row', gap: 4 },
+  friendMoreDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.soft },
   friendPhone: {
     color: colors.soft,
     fontSize: 11,
